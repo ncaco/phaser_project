@@ -1,6 +1,6 @@
 # 정령 키우기 게임
 
-뱀파이어 서바이벌 스타일의 정령 키우기 게임입니다. 플레이어가 정령을 수집하고 강화하며 끊임없이 몰려오는 적들을 물리치는 게임입니다.
+AI로 개발한 뱀파이어 서바이벌 스타일의 정령 키우기 게임입니다. 플레이어가 정령을 수집하고 강화하며 끊임없이 몰려오는 적들을 물리치는 게임입니다.
 
 ## 게임 특징
 
@@ -19,12 +19,12 @@
 
 1. 저장소를 클론합니다.
    ```
-   git clone https://github.com/yourusername/spirit-keeper.git
+   git clone https://github.com/ncaco/phaser_project.git
    ```
 
 2. 프로젝트 폴더로 이동합니다.
    ```
-   cd spirit-keeper
+   cd phaser_project
    ```
 
 3. 의존성을 설치합니다.
@@ -44,17 +44,20 @@
 - **Phaser 3**: HTML5 게임 프레임워크
 - **JavaScript (ES6+)**: 게임 로직 구현
 - **HTML5 & CSS3**: 게임 UI 및 스타일링
+- **Webpack**: 모듈 번들러
 
 ## 프로젝트 구조
 
 ```
-spirit-keeper/
+phaser_project/
 ├── index.html              # 메인 HTML 파일
 ├── package.json            # 프로젝트 의존성 관리
+├── webpack.config.js       # Webpack 설정 파일
+├── assets/                 # 게임 리소스
+│   ├── images/             # 이미지 파일
+│   ├── spritesheets/       # 스프라이트시트 파일
+│   └── audio/              # 오디오 파일
 ├── src/                    # 소스 코드
-│   ├── assets/             # 게임 리소스
-│   │   ├── images/         # 이미지 파일
-│   │   └── audio/          # 오디오 파일
 │   ├── entities/           # 게임 엔티티 클래스
 │   │   ├── Player.js       # 플레이어 클래스
 │   │   ├── Spirit.js       # 정령 클래스
@@ -69,8 +72,6 @@ spirit-keeper/
 │   ├── systems/            # 게임 시스템 클래스
 │   │   ├── EnemySpawner.js # 적 스포너 시스템
 │   │   └── LevelSystem.js  # 레벨 시스템
-│   ├── ui/                 # UI 컴포넌트
-│   ├── utils/              # 유틸리티 함수
 │   ├── Game.js             # 게임 설정 클래스
 │   └── main.js             # 게임 진입점
 └── README.md               # 프로젝트 설명
@@ -78,4 +79,4 @@ spirit-keeper/
 
 ## 라이선스
 
-MIT 라이선스 
+MIT 라이선스
