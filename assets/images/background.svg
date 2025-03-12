@@ -1,0 +1,33 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 -->
+  <rect width="800" height="600" fill="#1a2b3c"/>
+  
+  <!-- 별 -->
+  <circle cx="100" cy="100" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="200" cy="150" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="300" cy="80" r="1.5" fill="#ffffff" opacity="0.6"/>
+  <circle cx="400" cy="200" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="500" cy="120" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="600" cy="180" r="1.5" fill="#ffffff" opacity="0.6"/>
+  <circle cx="700" cy="90" r="1" fill="#ffffff" opacity="0.5"/>
+  
+  <circle cx="150" cy="250" r="1.5" fill="#ffffff" opacity="0.6"/>
+  <circle cx="250" cy="300" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="350" cy="350" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="450" cy="400" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="550" cy="450" r="1.5" fill="#ffffff" opacity="0.6"/>
+  <circle cx="650" cy="500" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="750" cy="550" r="2" fill="#ffffff" opacity="0.7"/>
+  
+  <!-- 구름 -->
+  <ellipse cx="200" cy="100" rx="80" ry="30" fill="#2c3e50" opacity="0.5"/>
+  <ellipse cx="600" cy="150" rx="100" ry="40" fill="#2c3e50" opacity="0.3"/>
+  <ellipse cx="400" cy="300" rx="120" ry="50" fill="#2c3e50" opacity="0.4"/>
+  
+  <!-- 산 -->
+  <polygon points="0,600 200,400 400,550 600,350 800,600" fill="#2c3e50"/>
+  
+  <!-- 달 -->
+  <circle cx="700" cy="100" r="50" fill="#f1c40f" opacity="0.8"/>
+  <circle cx="680" cy="90" r="45" fill="#1a2b3c"/>
+</svg> 

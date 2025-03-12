@@ -1,0 +1,61 @@
+<svg width="128" height="32" xmlns="http://www.w3.org/2000/svg">
+  <!-- 프레임 1 (x=0) -->
+  <g transform="translate(0, 0)">
+    <!-- 정령 몸체 (불꽃 형태) -->
+    <path d="M16,4 Q22,10 20,16 Q24,20 16,28 Q8,20 12,16 Q10,10 16,4" fill="#2ecc71"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="6" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="14" cy="12" r="1.5" fill="#2c3e50"/>
+    <circle cx="18" cy="12" r="1.5" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M14,16 Q16,18 18,16" stroke="#2c3e50" stroke-width="1" fill="none"/>
+    <!-- 빛나는 효과 -->
+    <circle cx="16" cy="16" r="14" fill="none" stroke="#2ecc71" stroke-width="1" opacity="0.3"/>
+  </g>
+  
+  <!-- 프레임 2 (x=32) -->
+  <g transform="translate(32, 0)">
+    <!-- 정령 몸체 (불꽃 형태) -->
+    <path d="M16,5 Q23,11 19,16 Q24,21 16,27 Q8,21 13,16 Q9,11 16,5" fill="#2ecc71"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="6" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="14" cy="12" r="1.5" fill="#2c3e50"/>
+    <circle cx="18" cy="12" r="1.5" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M14,16 Q16,17 18,16" stroke="#2c3e50" stroke-width="1" fill="none"/>
+    <!-- 빛나는 효과 -->
+    <circle cx="16" cy="16" r="15" fill="none" stroke="#2ecc71" stroke-width="1" opacity="0.4"/>
+  </g>
+  
+  <!-- 프레임 3 (x=64) -->
+  <g transform="translate(64, 0)">
+    <!-- 정령 몸체 (불꽃 형태) -->
+    <path d="M16,4 Q22,10 20,16 Q24,20 16,28 Q8,20 12,16 Q10,10 16,4" fill="#2ecc71"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="6" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="14" cy="12" r="1.5" fill="#2c3e50"/>
+    <circle cx="18" cy="12" r="1.5" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M14,16 Q16,18 18,16" stroke="#2c3e50" stroke-width="1" fill="none"/>
+    <!-- 빛나는 효과 -->
+    <circle cx="16" cy="16" r="14" fill="none" stroke="#2ecc71" stroke-width="1" opacity="0.3"/>
+  </g>
+  
+  <!-- 프레임 4 (x=96) -->
+  <g transform="translate(96, 0)">
+    <!-- 정령 몸체 (불꽃 형태) -->
+    <path d="M16,6 Q21,11 18,16 Q24,22 16,26 Q8,22 14,16 Q11,11 16,6" fill="#2ecc71"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="6" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="14" cy="12" r="1.5" fill="#2c3e50"/>
+    <circle cx="18" cy="12" r="1.5" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M14,16 Q16,17 18,16" stroke="#2c3e50" stroke-width="1" fill="none"/>
+    <!-- 빛나는 효과 -->
+    <circle cx="16" cy="16" r="13" fill="none" stroke="#2ecc71" stroke-width="1" opacity="0.2"/>
+  </g>
+</svg> 

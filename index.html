@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정령 키우기 게임</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #2c3e50;
+        }
+        #error-message {
+            color: red;
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: none;
+        }
+        #debug-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-family: monospace;
+            padding: 10px;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+    </style>
+    <!-- 외부 라이브러리 - 헤더에서 먼저 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    
+    <!-- 디버깅 스크립트 -->
+    <script>
+        // 디버그 로그 함수를 전역으로 설정
+        window.debugLog = function(message) {
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                const logEntry = document.createElement('div');
+                logEntry.textContent = new Date().toLocaleTimeString() + ': ' + message;
+                debugInfo.appendChild(logEntry);
+                debugInfo.scrollTop = debugInfo.scrollHeight;
+            }
+            console.log(message);
+        };
+        
+        // 전역 오류 핸들러 추가
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('전역 오류:', message, source, lineno, colno, error);
+            const errorElement = document.getElementById('error-message');
+            if (errorElement) {
+                errorElement.style.display = 'block';
+                errorElement.textContent = '오류 발생: ' + message;
+            }
+            
+            window.debugLog('오류 발생: ' + message);
+            window.debugLog('소스: ' + source);
+            window.debugLog('라인: ' + lineno + ', 컬럼: ' + colno);
+            if (error && error.stack) {
+                window.debugLog('스택: ' + error.stack);
+            }
+            
+            return false;
+        };
+        
+        // 페이지 로드 이벤트
+        window.addEventListener('load', function() {
+            window.debugLog('페이지 로드 완료');
+            window.debugLog('게임 컨테이너: ' + (document.getElementById('game-container') ? '존재함' : '없음'));
+            
+            // Phaser 라이브러리 로드 확인
+            if (typeof Phaser === 'undefined') {
+                console.error('Phaser 라이브러리가 로드되지 않았습니다!');
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('error-message').textContent = 'Phaser 라이브러리 로드 실패';
+                window.debugLog('Phaser 라이브러리 로드 실패');
+            } else {
+                window.debugLog('Phaser 버전: ' + Phaser.VERSION);
+            }
+        });
+    </script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="error-message"></div>
+        <div id="debug-info"></div>
+    </div>
+</body>
+</html> 

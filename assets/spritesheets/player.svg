@@ -1,0 +1,59 @@
+<svg width="128" height="32" xmlns="http://www.w3.org/2000/svg">
+  <!-- 프레임 1 (x=0) -->
+  <g transform="translate(0, 0)">
+    <!-- 몸체 -->
+    <circle cx="16" cy="16" r="12" fill="#3498db"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="8" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="13" cy="12" r="2" fill="#2c3e50"/>
+    <circle cx="19" cy="12" r="2" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M13,18 Q16,20 19,18" stroke="#2c3e50" stroke-width="1" fill="none"/>
+  </g>
+  
+  <!-- 프레임 2 (x=32) -->
+  <g transform="translate(32, 0)">
+    <!-- 몸체 -->
+    <circle cx="16" cy="16" r="12" fill="#3498db"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="8" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="13" cy="12" r="2" fill="#2c3e50"/>
+    <circle cx="19" cy="12" r="2" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M13,17 Q16,19 19,17" stroke="#2c3e50" stroke-width="1" fill="none"/>
+    <!-- 팔 움직임 -->
+    <line x1="10" y1="16" x2="6" y2="20" stroke="#3498db" stroke-width="4" stroke-linecap="round"/>
+    <line x1="22" y1="16" x2="26" y2="20" stroke="#3498db" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <!-- 프레임 3 (x=64) -->
+  <g transform="translate(64, 0)">
+    <!-- 몸체 -->
+    <circle cx="16" cy="16" r="12" fill="#3498db"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="8" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="13" cy="12" r="2" fill="#2c3e50"/>
+    <circle cx="19" cy="12" r="2" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M13,18 Q16,20 19,18" stroke="#2c3e50" stroke-width="1" fill="none"/>
+  </g>
+  
+  <!-- 프레임 4 (x=96) -->
+  <g transform="translate(96, 0)">
+    <!-- 몸체 -->
+    <circle cx="16" cy="16" r="12" fill="#3498db"/>
+    <!-- 얼굴 -->
+    <circle cx="16" cy="14" r="8" fill="#ffffff" opacity="0.8"/>
+    <!-- 눈 -->
+    <circle cx="13" cy="12" r="2" fill="#2c3e50"/>
+    <circle cx="19" cy="12" r="2" fill="#2c3e50"/>
+    <!-- 입 -->
+    <path d="M13,17 Q16,19 19,17" stroke="#2c3e50" stroke-width="1" fill="none"/>
+    <!-- 팔 움직임 (반대 방향) -->
+    <line x1="10" y1="16" x2="6" y2="12" stroke="#3498db" stroke-width="4" stroke-linecap="round"/>
+    <line x1="22" y1="16" x2="26" y2="12" stroke="#3498db" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg> 
