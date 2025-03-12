@@ -38,11 +38,58 @@ try {
         throw new Error('Phaser 라이브러리가 로드되지 않았습니다.');
     }
 
+    // 화면 크기 계산 함수
+    const calculateGameSize = () => {
+        // 기본 게임 비율 (4:3)
+        const gameRatio = 4 / 3;
+        
+        // 윈도우 크기
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        // 게임 컨테이너 크기 (패딩 등 고려)
+        const containerWidth = gameContainer.clientWidth;
+        const containerHeight = gameContainer.clientHeight || windowHeight;
+        
+        // 사용 가능한 최대 크기
+        const maxWidth = Math.min(windowWidth, containerWidth);
+        const maxHeight = Math.min(windowHeight, containerHeight);
+        
+        // 화면 비율
+        const screenRatio = maxWidth / maxHeight;
+        
+        let width, height;
+        
+        if (screenRatio > gameRatio) {
+            // 화면이 게임보다 더 넓은 경우 (높이에 맞춤)
+            height = maxHeight;
+            width = height * gameRatio;
+        } else {
+            // 화면이 게임보다 더 좁은 경우 (너비에 맞춤)
+            width = maxWidth;
+            height = width / gameRatio;
+        }
+        
+        // 최소 크기 제한
+        width = Math.max(width, 320);
+        height = Math.max(height, 240);
+        
+        // 정수로 반올림
+        return {
+            width: Math.floor(width),
+            height: Math.floor(height)
+        };
+    };
+    
+    // 초기 게임 크기 계산
+    const gameSize = calculateGameSize();
+    console.log(`계산된 게임 크기: ${gameSize.width}x${gameSize.height}`);
+    
     // 게임 설정
     const config = {
         type: Phaser.AUTO,
-        width: 800,
-        height: 600,
+        width: gameSize.width,
+        height: gameSize.height,
         parent: 'game-container',
         backgroundColor: '#2c3e50',
         physics: {
@@ -51,6 +98,12 @@ try {
                 gravity: { y: 0 },
                 debug: false
             }
+        },
+        scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+            width: gameSize.width,
+            height: gameSize.height
         },
         scene: [BootScene, PreloadScene, MainMenuScene, GameScene]
     };
@@ -62,6 +115,18 @@ try {
     }
     
     const game = new Phaser.Game(config);
+    
+    // 화면 크기 변경 이벤트 처리
+    window.addEventListener('resize', () => {
+        if (game.isBooted) {
+            const newSize = calculateGameSize();
+            game.scale.resize(newSize.width, newSize.height);
+            console.log(`게임 크기 조정: ${newSize.width}x${newSize.height}`);
+            if (typeof window.debugLog === 'function') {
+                window.debugLog(`게임 크기 조정: ${newSize.width}x${newSize.height}`);
+            }
+        }
+    }, false);
     
     console.log('게임 초기화 완료');
     if (typeof window.debugLog === 'function') {

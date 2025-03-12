@@ -135,12 +135,18 @@ class PreloadScene extends Phaser.Scene {
             this.logDebug('이미지 로드 시작');
             
             // 배경 이미지
-            this.load.image('background', 'assets/images/background.png');
+            this.load.image('background', 'assets/images/background.svg');
             
             // UI 이미지
-            this.load.image('title', 'assets/images/title.png');
-            this.load.image('button', 'assets/images/button.png');
-            this.load.image('item', 'assets/images/item.png');
+            this.load.image('title', 'assets/images/title.svg');
+            this.load.image('button', 'assets/images/button.svg');
+            this.load.image('item', 'assets/images/item.svg');
+            
+            // 바닥 타일 이미지 (추가)
+            this.load.image('ground_tile', 'assets/images/ground_tile.svg');
+            
+            // 업그레이드 효과 이미지 (추가)
+            this.load.image('upgrade_effect', 'assets/images/upgrade_effect.svg');
             
             this.logDebug('이미지 로드 요청 완료');
         } catch (error) {
@@ -157,19 +163,19 @@ class PreloadScene extends Phaser.Scene {
             this.logDebug('스프라이트시트 로드 시작');
             
             // 플레이어 스프라이트시트
-            this.load.spritesheet('player', 'assets/spritesheets/player.png', {
+            this.load.spritesheet('player', 'assets/spritesheets/player.svg', {
                 frameWidth: 32,
                 frameHeight: 32
             });
             
             // 정령 스프라이트시트
-            this.load.spritesheet('spirit', 'assets/spritesheets/spirit.png', {
+            this.load.spritesheet('spirit', 'assets/spritesheets/spirit.svg', {
                 frameWidth: 32,
                 frameHeight: 32
             });
             
             // 적 스프라이트시트
-            this.load.spritesheet('enemy', 'assets/spritesheets/enemy.png', {
+            this.load.spritesheet('enemy', 'assets/spritesheets/enemy.svg', {
                 frameWidth: 32,
                 frameHeight: 32
             });
@@ -271,27 +277,33 @@ class PreloadScene extends Phaser.Scene {
         try {
             this.logDebug('대체 오디오 생성 시작');
             
-            // 빈 오디오 컨텍스트 생성 (실제 소리는 나지 않음)
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0;
-            gainNode.connect(audioContext.destination);
+            // 더미 오디오 객체 생성
+            const dummySound = {
+                play: function() { return this; },
+                stop: function() { return this; },
+                pause: function() { return this; },
+                resume: function() { return this; },
+                setVolume: function() { return this; },
+                setLoop: function() { return this; }
+            };
             
-            // 더미 오디오 데이터 생성
-            const dummyData = new Uint8Array(1);
-            const dummyBuffer = audioContext.createBuffer(1, 1, 22050);
-            
-            // 더미 오디오 캐시
-            this.cache.audio.add('bgm', dummyBuffer);
-            this.cache.audio.add('attack', dummyBuffer);
-            this.cache.audio.add('item', dummyBuffer);
-            this.cache.audio.add('levelup', dummyBuffer);
-            this.cache.audio.add('gameover', dummyBuffer);
+            // 더미 오디오 캐시에 추가
+            this.sound.add('bgm', dummySound);
+            this.sound.add('attack', dummySound);
+            this.sound.add('item', dummySound);
+            this.sound.add('levelup', dummySound);
+            this.sound.add('gameover', dummySound);
+            this.sound.add('game_over', dummySound); // 추가: GameScene에서 사용하는 이름
             
             this.logDebug('대체 오디오 생성 완료');
         } catch (error) {
             console.error('대체 오디오 생성 중 오류 발생:', error);
             this.logDebug('대체 오디오 생성 오류: ' + error.message);
+            
+            // 오디오 관련 오류를 무시하도록 설정
+            this.sound.on('loaderror', (soundKey, err) => {
+                console.warn(`오디오 로드 오류 무시: ${soundKey}`, err);
+            });
         }
     }
 

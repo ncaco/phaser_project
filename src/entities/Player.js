@@ -18,14 +18,57 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.invulnerable = false;
         this.invulnerableTime = 500; // 무적 시간 (밀리초)
         
+        // 대시 속성
+        this.dashSpeed = 400;
+        this.dashDuration = 200; // 대시 지속 시간 (밀리초)
+        this.dashCooldown = 2000; // 대시 쿨다운 (밀리초)
+        this.canDash = true;
+        this.isDashing = false;
+        
+        // 경험치 시스템
+        this.experience = 0;
+        this.level = 1;
+        this.experienceToNextLevel = 100;
+        
         // 정령 목록
         this.spirits = [];
         
         // 초기 정령 생성
         this.addSpirit('기본 정령');
+        
+        // 애니메이션 설정
+        this.setupAnimations();
+        
+        // 키보드 입력 설정
+        this.setupKeyboardInput();
+    }
+    
+    setupAnimations() {
+        // 플레이어 애니메이션 설정
+        if (this.scene.anims.exists('player_idle')) return;
+        
+        this.scene.anims.create({
+            key: 'player_idle',
+            frames: this.scene.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+        
+        // 기본 애니메이션 재생
+        this.play('player_idle');
+    }
+    
+    setupKeyboardInput() {
+        // 스페이스바 입력 설정 (대시)
+        this.scene.input.keyboard.on('keydown-SPACE', () => {
+            this.dash();
+        });
     }
 
     update(cursors) {
+        // 대시 중이면 이동 로직 스킵
+        if (this.isDashing) return;
+        
         // 이동 로직
         this.handleMovement(cursors);
         
@@ -34,6 +77,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     handleMovement(cursors) {
+        // cursors가 undefined인 경우 처리
+        if (!cursors) {
+            this.setVelocity(0, 0);
+            return;
+        }
+        
         // 수평 이동
         if (cursors.left.isDown) {
             this.setVelocityX(-this.speed);
@@ -74,6 +123,91 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             }
         }
     }
+    
+    dash() {
+        // 대시 쿨다운 체크
+        if (!this.canDash || this.isDashing) return;
+        
+        // 대시 방향 설정 (현재 이동 방향 또는 바라보는 방향)
+        let dashVelocityX = this.body.velocity.x;
+        let dashVelocityY = this.body.velocity.y;
+        
+        // 이동 중이 아니면 바라보는 방향으로 대시
+        if (dashVelocityX === 0 && dashVelocityY === 0) {
+            dashVelocityX = this.flipX ? -1 : 1;
+        }
+        
+        // 대시 속도 정규화
+        const length = Math.sqrt(dashVelocityX * dashVelocityX + dashVelocityY * dashVelocityY);
+        if (length > 0) {
+            dashVelocityX = (dashVelocityX / length) * this.dashSpeed;
+            dashVelocityY = (dashVelocityY / length) * this.dashSpeed;
+        }
+        
+        // 대시 상태 설정
+        this.isDashing = true;
+        this.canDash = false;
+        
+        // 대시 중 무적 상태
+        this.invulnerable = true;
+        
+        // 대시 속도 설정
+        this.setVelocity(dashVelocityX, dashVelocityY);
+        
+        // 대시 효과
+        this.scene.tweens.add({
+            targets: this,
+            alpha: 0.7,
+            duration: this.dashDuration / 2,
+            yoyo: true
+        });
+        
+        // 대시 잔상 효과
+        this.createDashTrail();
+        
+        // 대시 종료 타이머
+        this.scene.time.delayedCall(this.dashDuration, () => {
+            this.isDashing = false;
+            this.invulnerable = false;
+            this.alpha = 1;
+        });
+        
+        // 대시 쿨다운 타이머
+        this.scene.time.delayedCall(this.dashCooldown, () => {
+            this.canDash = true;
+            
+            // 대시 가능 효과
+            this.scene.tweens.add({
+                targets: this,
+                scaleX: 1.2,
+                scaleY: 1.2,
+                duration: 200,
+                yoyo: true
+            });
+        });
+    }
+    
+    createDashTrail() {
+        // 대시 잔상 효과 생성
+        for (let i = 0; i < 5; i++) {
+            this.scene.time.delayedCall(i * 50, () => {
+                const trail = this.scene.add.sprite(this.x, this.y, 'player');
+                trail.setAlpha(0.3);
+                trail.setScale(this.scaleX, this.scaleY);
+                trail.setFlipX(this.flipX);
+                
+                // 잔상 페이드 아웃
+                this.scene.tweens.add({
+                    targets: trail,
+                    alpha: 0,
+                    duration: 200,
+                    onComplete: () => {
+                        trail.destroy();
+                    }
+                });
+            });
+        }
+    }
 
     updateSpirits() {
         // 정령들이 플레이어를 따라다니도록 설정
@@ -81,8 +215,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             const spirit = this.spirits[i];
             
             // 정령의 위치 업데이트
-            const angle = (i * (360 / this.spirits.length)) * (Math.PI / 180);
-            const distance = 50; // 플레이어로부터의 거리
+            const angle = (i * (360 / this.spirits.length) + this.scene.time.now * 0.1) * (Math.PI / 180);
+            const distance = 50 + (this.level * 2); // 플레이어로부터의 거리 (레벨에 따라 증가)
             
             const targetX = this.x + Math.cos(angle) * distance;
             const targetY = this.y + Math.sin(angle) * distance;
@@ -104,6 +238,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 무적 상태 설정
         this.setInvulnerable();
+        
+        // 체력 업데이트 이벤트 발생
+        this.scene.events.emit('healthUpdate', this.health, this.maxHealth);
+        
+        // 사망 체크
+        if (this.health <= 0) {
+            this.scene.events.emit('playerDeath');
+        }
     }
 
     setInvulnerable() {
@@ -131,6 +273,81 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 체력 업데이트 이벤트 발생
         this.scene.events.emit('healthUpdate', this.health, this.maxHealth);
+        
+        // 회복 효과
+        const healEffect = this.scene.add.sprite(this.x, this.y, 'item');
+        healEffect.setTint(0x00ff00);
+        healEffect.setScale(2);
+        
+        this.scene.tweens.add({
+            targets: healEffect,
+            scale: 0,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+                healEffect.destroy();
+            }
+        });
+    }
+    
+    addExperience(amount) {
+        // 경험치 증가
+        this.experience += amount;
+        
+        // 경험치 업데이트 이벤트 발생
+        this.scene.events.emit('experienceUpdate', this.experience, this.experienceToNextLevel);
+        
+        // 레벨업 체크
+        this.checkLevelUp();
+    }
+    
+    checkLevelUp() {
+        // 레벨업 조건 확인
+        if (this.experience >= this.experienceToNextLevel) {
+            // 레벨 증가
+            this.level++;
+            
+            // 남은 경험치 계산
+            this.experience -= this.experienceToNextLevel;
+            
+            // 다음 레벨 필요 경험치 증가
+            this.experienceToNextLevel = Math.floor(this.experienceToNextLevel * 1.5);
+            
+            // 레벨업 효과
+            this.levelUp();
+            
+            // 레벨업 이벤트 발생
+            this.scene.events.emit('levelUp', this.level);
+            
+            // 추가 레벨업 체크 (경험치가 충분한 경우 연속 레벨업)
+            this.checkLevelUp();
+        }
+    }
+    
+    levelUp() {
+        // 체력 증가
+        this.maxHealth += 10;
+        this.health = this.maxHealth;
+        
+        // 이동 속도 증가
+        this.speed += 5;
+        
+        // 레벨업 효과
+        const levelUpEffect = this.scene.add.sprite(this.x, this.y, 'upgrade_effect');
+        levelUpEffect.setScale(2);
+        
+        this.scene.tweens.add({
+            targets: levelUpEffect,
+            scale: 3,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => {
+                levelUpEffect.destroy();
+            }
+        });
+        
+        // 체력 업데이트 이벤트 발생
+        this.scene.events.emit('healthUpdate', this.health, this.maxHealth);
     }
 
     addSpirit(spiritName) {
@@ -141,10 +358,26 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.spirits.push(spirit);
         
         // 정령 그룹에 추가
-        this.scene.spirits.add(spirit);
+        if (this.scene.spirits) {
+            this.scene.spirits.add(spirit);
+        }
+        
+        // 정령 추가 효과
+        const addEffect = this.scene.add.sprite(this.x, this.y, 'spirit');
+        addEffect.setScale(2);
+        
+        this.scene.tweens.add({
+            targets: addEffect,
+            scale: 0,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+                addEffect.destroy();
+            }
+        });
         
         // 정령 업데이트 이벤트 발생
-        this.scene.events.emit('spiritUpdate', spiritName);
+        this.scene.events.emit('spiritUpdate', this.spirits.length);
         
         return spirit;
     }
