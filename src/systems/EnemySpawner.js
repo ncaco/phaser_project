@@ -8,7 +8,8 @@ class EnemySpawner {
         this.spawnTimer = null;
         
         // 적 생성 간격 (밀리초)
-        this.spawnInterval = 2000;
+        this.spawnRate = 2000;
+        this.spawnInterval = this.spawnRate;
         
         // 적 생성 범위 (플레이어 주변)
         this.spawnRadius = 500;
@@ -25,11 +26,18 @@ class EnemySpawner {
         this.waveCooldown = false;
         
         // 보스 웨이브 간격
-        this.bossWaveInterval = 5;
+        this.bossWaveInterval = 3;
         
         // 난이도 설정
         this.difficulty = 1;
         this.difficultyMultiplier = 1;
+        
+        // 적 체력 및 공격력 배율
+        this.enemyHealthMultiplier = 1.0;
+        this.enemyDamageMultiplier = 1.0;
+        
+        // 최대 적 수
+        this.maxEnemies = 15;
         
         // 적 타입별 가중치
         this.enemyWeights = {
@@ -64,8 +72,48 @@ class EnemySpawner {
         this.enemiesKilled = 0;
         this.waveCompleted = false;
         
+        // 난이도에 따른 적 타입 가중치 조정
+        this.adjustEnemyWeightsByDifficulty();
+        
         // 웨이브 시작 메시지
         this.showWaveMessage(`웨이브 ${this.currentWave} 시작!`);
+    }
+    
+    // 난이도에 따른 적 타입 가중치 조정
+    adjustEnemyWeightsByDifficulty() {
+        const difficulty = this.scene.difficulty || 'normal';
+        
+        switch (difficulty) {
+            case 'easy':
+                this.enemyWeights = {
+                    normal: 80,
+                    fast: 10,
+                    tank: 8,
+                    ranged: 2,
+                    explosive: 0
+                };
+                break;
+                
+            case 'normal':
+                this.enemyWeights = {
+                    normal: 70,
+                    fast: 15,
+                    tank: 10,
+                    ranged: 5,
+                    explosive: 0
+                };
+                break;
+                
+            case 'hard':
+                this.enemyWeights = {
+                    normal: 60,
+                    fast: 20,
+                    tank: 12,
+                    ranged: 8,
+                    explosive: 0
+                };
+                break;
+        }
     }
     
     stop() {
@@ -88,6 +136,11 @@ class EnemySpawner {
         
         // 웨이브가 완료되었으면 리턴
         if (this.waveCompleted) return;
+        
+        // 최대 적 수 제한
+        if (this.scene.enemies.getChildren().length >= this.maxEnemies) {
+            return;
+        }
         
         // 웨이브당 적 수 제한
         if (this.enemiesSpawned >= this.enemiesPerWave * this.currentWave) {
@@ -185,18 +238,31 @@ class EnemySpawner {
     
     applyDifficultyToEnemy(enemy) {
         // 난이도에 따른 적 강화
-        const multiplier = this.difficultyMultiplier;
+        const baseMultiplier = this.difficultyMultiplier;
         
         // 체력 증가
-        enemy.health *= multiplier;
-        enemy.maxHealth *= multiplier;
+        enemy.health *= baseMultiplier * this.enemyHealthMultiplier;
+        enemy.maxHealth *= baseMultiplier * this.enemyHealthMultiplier;
         
         // 공격력 증가
-        enemy.damage *= multiplier;
+        enemy.damage *= baseMultiplier * this.enemyDamageMultiplier;
         
         // 경험치 및 드롭률 증가
-        enemy.expValue = Math.floor(enemy.expValue * multiplier);
-        enemy.dropRate = Math.min(1.0, enemy.dropRate * multiplier);
+        enemy.expValue = Math.floor(enemy.expValue * baseMultiplier);
+        
+        // 난이도에 따른 드롭률 조정
+        const difficulty = this.scene.difficulty || 'normal';
+        switch (difficulty) {
+            case 'easy':
+                enemy.dropRate = Math.min(1.0, enemy.dropRate * 1.2); // 쉬움: 드롭률 20% 증가
+                break;
+            case 'normal':
+                enemy.dropRate = Math.min(1.0, enemy.dropRate * baseMultiplier); // 보통: 기본 드롭률
+                break;
+            case 'hard':
+                enemy.dropRate = Math.min(1.0, enemy.dropRate * 0.8); // 어려움: 드롭률 20% 감소
+                break;
+        }
         
         // 체력바 업데이트
         enemy.updateHealthBar();
@@ -242,7 +308,7 @@ class EnemySpawner {
         // 웨이브에 따른 난이도 조정
         
         // 적 생성 간격 감소 (최소 500ms)
-        this.spawnInterval = Math.max(500, 2000 - (this.currentWave * 100));
+        this.spawnInterval = Math.max(500, this.spawnRate - (this.currentWave * 100));
         
         // 타이머 업데이트
         if (this.spawnTimer) {
@@ -254,104 +320,112 @@ class EnemySpawner {
             });
         }
         
+        // 난이도 증가
+        this.difficultyMultiplier = 1 + (this.currentWave * 0.1);
+        
         // 적 타입 가중치 조정
         if (this.currentWave >= 3) {
-            this.enemyWeights.fast = 20;
-            this.enemyWeights.tank = 15;
-            this.enemyWeights.ranged = 10;
+            this.enemyWeights.explosive = Math.min(20, this.enemyWeights.explosive + 2);
         }
         
-        if (this.currentWave >= 5) {
-            this.enemyWeights.explosive = 5;
-            this.enemyWeights.normal = 50;
-        }
-        
-        if (this.currentWave >= 10) {
-            this.enemyWeights.fast = 25;
-            this.enemyWeights.tank = 20;
-            this.enemyWeights.ranged = 15;
-            this.enemyWeights.explosive = 10;
-            this.enemyWeights.normal = 30;
+        // 웨이브 정보 업데이트
+        if (this.scene.updateWaveInfo) {
+            this.scene.updateWaveInfo();
         }
     }
     
     increaseDifficulty() {
         // 시간에 따른 난이도 증가
-        if (!this || !this.scene) return; // this 체크 추가
+        this.difficulty += 0.1;
         
-        this.difficulty += 0.5;
-        this.difficultyMultiplier = 1 + ((this.difficulty - 1) * 0.2);
+        // 적 생성 간격 감소 (최소 500ms)
+        this.spawnInterval = Math.max(500, this.spawnInterval - 50);
         
-        // 난이도 증가 메시지
-        this.showWaveMessage(`난이도 증가: ${this.difficulty.toFixed(1)}`, 0xff8800);
+        // 타이머 업데이트
+        if (this.spawnTimer) {
+            this.spawnTimer.reset({
+                delay: this.spawnInterval,
+                callback: this.spawnEnemy,
+                callbackScope: this,
+                loop: true
+            });
+        }
+        
+        // 난이도 증가 메시지 (10% 확률)
+        if (Phaser.Math.Between(1, 10) === 1) {
+            this.showWaveMessage('난이도 증가!', 0xff0000);
+        }
     }
     
     createSpawnEffect(x, y) {
         // 적 생성 효과
-        if (!this || !this.scene) return; // this 체크 추가
-        
-        const effect = this.scene.add.circle(x, y, 30, 0xff0000, 0.5);
+        const circle = this.scene.add.circle(x, y, 30, 0xff0000, 0.7);
         
         // 효과 애니메이션
         this.scene.tweens.add({
-            targets: effect,
-            scale: 0,
+            targets: circle,
             alpha: 0,
+            scale: 2,
             duration: 500,
             onComplete: () => {
-                effect.destroy();
+                circle.destroy();
             }
         });
     }
     
     showWaveMessage(message, color = 0xffffff) {
         // 웨이브 메시지 표시
-        if (!this || !this.scene || !this.scene.cameras || !this.scene.cameras.main) return; // 필요한 객체 체크 추가
+        const text = this.scene.add.text(
+            this.scene.cameras.main.width / 2,
+            this.scene.cameras.main.height / 3,
+            message,
+            {
+                font: '32px Arial',
+                fill: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        ).setOrigin(0.5);
         
+        // 텍스트 색상 설정
+        text.setTint(color);
+        
+        // 텍스트 애니메이션
+        this.scene.tweens.add({
+            targets: text,
+            y: text.y - 50,
+            alpha: 0,
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => {
+                text.destroy();
+            }
+        });
+        
+        // 효과음 재생
         try {
-            const text = this.scene.add.text(
-                this.scene.cameras.main.centerX,
-                100,
-                message,
-                {
-                    fontFamily: 'Arial',
-                    fontSize: '32px',
-                    color: `#${color.toString(16).padStart(6, '0')}`,
-                    stroke: '#000000',
-                    strokeThickness: 4,
-                    align: 'center'
-                }
-            );
-            text.setOrigin(0.5);
-            text.setDepth(1000);
-            text.setScrollFactor(0); // 카메라 스크롤에 영향 받지 않도록 설정
-            
-            // 메시지 애니메이션
-            this.scene.tweens.add({
-                targets: text,
-                y: text.y - 50,
-                alpha: 0,
-                duration: 2000,
-                ease: 'Power2',
-                onComplete: () => {
-                    if (text && text.destroy) {
-                        text.destroy();
-                    }
-                }
-            });
+            if (message.includes('시작')) {
+                this.scene.sound.play('wave_start');
+            } else if (message.includes('완료')) {
+                this.scene.sound.play('wave_complete');
+            } else if (message.includes('보스')) {
+                this.scene.sound.play('boss_warning');
+            }
         } catch (error) {
-            console.error('웨이브 메시지 표시 중 오류:', error);
+            console.error('효과음 재생 중 오류 발생:', error);
         }
     }
     
     getCurrentWaveInfo() {
         // 현재 웨이브 정보 반환
         return {
-            wave: this.currentWave,
+            currentWave: this.currentWave,
             enemiesSpawned: this.enemiesSpawned,
             enemiesKilled: this.enemiesKilled,
-            enemiesPerWave: this.enemiesPerWave * this.currentWave,
-            difficulty: this.difficulty
+            totalEnemies: this.enemiesPerWave * this.currentWave,
+            waveCompleted: this.waveCompleted,
+            waveCooldown: this.waveCooldown,
+            nextBossWave: this.bossWaveInterval - (this.currentWave % this.bossWaveInterval)
         };
     }
 }

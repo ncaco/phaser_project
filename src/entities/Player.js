@@ -325,29 +325,33 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
     
     levelUp() {
-        // 체력 증가
+        this.level++;
+        this.experience -= this.experienceToNextLevel;
+        this.experienceToNextLevel = Math.floor(this.experienceToNextLevel * 1.5);
+        
+        // 레벨업 보상
         this.maxHealth += 10;
         this.health = this.maxHealth;
-        
-        // 이동 속도 증가
-        this.speed += 5;
+        this.damage += 2;
+        this.healAmount += 5;
         
         // 레벨업 효과
-        const levelUpEffect = this.scene.add.sprite(this.x, this.y, 'upgrade_effect');
-        levelUpEffect.setScale(2);
+        this.createLevelUpEffect();
         
-        this.scene.tweens.add({
-            targets: levelUpEffect,
-            scale: 3,
-            alpha: 0,
-            duration: 1000,
-            onComplete: () => {
-                levelUpEffect.destroy();
-            }
-        });
+        // 레벨업 효과음 재생
+        try {
+            this.scene.sound.play('level_up');
+        } catch (error) {
+            console.error('레벨업 효과음 재생 중 오류 발생:', error);
+        }
         
-        // 체력 업데이트 이벤트 발생
-        this.scene.events.emit('healthUpdate', this.health, this.maxHealth);
+        // 레벨업 이벤트 발생
+        if (this.scene.onLevelUp) {
+            this.scene.onLevelUp(this.level);
+        }
+        
+        // 경험치가 다음 레벨에 필요한 양보다 많으면 다시 레벨업
+        this.checkLevelUp();
     }
 
     addSpirit(spiritName) {
@@ -383,10 +387,96 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     upgradeSpirit(index) {
+        // 인덱스가 유효한지 확인
+        if (index < 0 || index >= this.spirits.length) return;
+        
         // 정령 업그레이드
-        if (index >= 0 && index < this.spirits.length) {
-            this.spirits[index].upgrade();
+        this.spirits[index].upgrade();
+        
+        // 업그레이드 효과음 재생
+        try {
+            this.scene.sound.play('spirit_upgrade');
+        } catch (error) {
+            console.error('업그레이드 효과음 재생 중 오류 발생:', error);
         }
+        
+        // 정령 업그레이드 이벤트 발생
+        if (this.scene.onSpiritUpgraded) {
+            this.scene.onSpiritUpgraded();
+        }
+    }
+
+    // 레벨업 효과 생성
+    createLevelUpEffect() {
+        // 레벨업 텍스트 효과
+        const levelUpText = this.scene.add.text(
+            this.x,
+            this.y - 50,
+            'LEVEL UP!',
+            {
+                font: '24px Arial',
+                fill: '#ffff00',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        ).setOrigin(0.5);
+        
+        // 텍스트 애니메이션
+        this.scene.tweens.add({
+            targets: levelUpText,
+            y: levelUpText.y - 30,
+            alpha: 0,
+            duration: 1500,
+            onComplete: () => {
+                levelUpText.destroy();
+            }
+        });
+        
+        // 레벨업 원형 효과
+        const circle = this.scene.add.circle(this.x, this.y, 50, 0xffff00, 0.5);
+        
+        // 원형 효과 애니메이션
+        this.scene.tweens.add({
+            targets: circle,
+            scale: 2,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => {
+                circle.destroy();
+            }
+        });
+        
+        // 파티클 효과
+        for (let i = 0; i < 20; i++) {
+            const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+            const distance = Phaser.Math.FloatBetween(20, 100);
+            
+            const x = this.x + Math.cos(angle) * distance;
+            const y = this.y + Math.sin(angle) * distance;
+            
+            const particle = this.scene.add.circle(x, y, 5, 0xffff00, 1);
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.x,
+                y: this.y,
+                alpha: 0,
+                duration: Phaser.Math.FloatBetween(500, 1000),
+                onComplete: () => {
+                    particle.destroy();
+                }
+            });
+        }
+        
+        // 일시적인 무적 효과
+        this.invulnerable = true;
+        this.alpha = 0.7;
+        
+        // 1초 후 무적 해제
+        this.scene.time.delayedCall(1000, () => {
+            this.invulnerable = false;
+            this.alpha = 1;
+        });
     }
 }
 

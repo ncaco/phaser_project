@@ -614,38 +614,137 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     
     die() {
-        // 사망 효과
+        // 사망 효과음 재생
+        try {
+            this.scene.sound.play('enemy_death');
+        } catch (error) {
+            console.error('사망 효과음 재생 중 오류 발생:', error);
+        }
+        
+        // 사망 효과 생성
+        this.createDeathEffect();
+        
+        // 아이템 드롭
+        this.dropItem();
+        
+        // 경험치 드롭
+        this.dropExperience();
+        
+        // 적 처치 이벤트 발생
+        if (this.scene.onEnemyKilled) {
+            this.scene.onEnemyKilled(this);
+        }
+        
+        // 객체 제거
+        this.destroy();
+    }
+    
+    // 사망 효과 생성
+    createDeathEffect() {
+        // 사망 효과 애니메이션
         this.scene.tweens.add({
             targets: this,
             alpha: 0,
             scale: 0,
-            duration: 300,
+            duration: 300
+        });
+        
+        // 파티클 효과
+        const particleColor = this.getParticleColor();
+        const circle = this.scene.add.circle(this.x, this.y, 20, particleColor, 0.7);
+        
+        // 효과 애니메이션
+        this.scene.tweens.add({
+            targets: circle,
+            scale: 2,
+            alpha: 0,
+            duration: 500,
             onComplete: () => {
-                // 경험치 드롭
-                this.scene.player.addExperience(this.expValue);
-                
-                // 아이템 드롭 확률에 따라 아이템 생성
-                if (Math.random() < this.dropRate) {
-                    const Item = require('./Item').Item;
-                    new Item(this.scene, this.x, this.y);
-                }
-                
-                // 체력바 제거
-                this.healthBar.destroy();
-                
-                // 타이머 제거
-                if (this.behaviorTimer) {
-                    this.behaviorTimer.remove();
-                }
-                
-                if (this.bossAbilityTimer) {
-                    this.bossAbilityTimer.remove();
-                }
-                
-                // 적 제거
-                this.destroy();
+                circle.destroy();
             }
         });
+        
+        // 체력바 제거
+        if (this.healthBar) {
+            this.healthBar.destroy();
+        }
+        
+        // 타이머 제거
+        if (this.behaviorTimer) {
+            this.behaviorTimer.remove();
+        }
+        
+        if (this.bossAbilityTimer) {
+            this.bossAbilityTimer.remove();
+        }
+    }
+    
+    // 파티클 색상 가져오기
+    getParticleColor() {
+        switch (this.type) {
+            case 'normal':
+                return 0xffffff;
+            case 'fast':
+                return 0x00ff00;
+            case 'tank':
+                return 0x0000ff;
+            case 'ranged':
+                return 0xffff00;
+            case 'explosive':
+                return 0xff8800;
+            case 'boss':
+                return 0xff0000;
+            default:
+                return 0xffffff;
+        }
+    }
+    
+    // 아이템 드롭
+    dropItem() {
+        // 아이템 드롭 확률에 따라 아이템 생성
+        if (Math.random() < this.dropRate) {
+            const Item = require('./Item').Item;
+            new Item(this.scene, this.x, this.y);
+        }
+        
+        // 보스는 항상 아이템 드롭
+        if (this.type === 'boss') {
+            const Item = require('./Item').Item;
+            
+            // 보스는 희귀 아이템 드롭
+            const rarity = Math.random() < 0.5 ? 'epic' : 'legendary';
+            new Item(this.scene, this.x, this.y, 'spirit', rarity);
+        }
+    }
+    
+    // 경험치 드롭
+    dropExperience() {
+        // 플레이어에게 경험치 추가
+        if (this.scene.player) {
+            this.scene.player.addExperience(this.expValue);
+            
+            // 경험치 텍스트 효과
+            const expText = this.scene.add.text(
+                this.x,
+                this.y - 30,
+                `+${this.expValue} EXP`,
+                {
+                    font: '16px Arial',
+                    fill: '#00ffff'
+                }
+            ).setOrigin(0.5);
+            
+            // 텍스트 애니메이션
+            this.scene.tweens.add({
+                targets: expText,
+                y: expText.y - 50,
+                alpha: 0,
+                duration: 1000,
+                onComplete: () => {
+                    expText.destroy();
+                }
+            });
+        }
     }
 }
 

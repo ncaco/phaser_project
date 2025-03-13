@@ -88,6 +88,22 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
                 this.setTint(0xffff00);
                 break;
                 
+            case '얼음 정령':
+                this.type = 'ice';
+                this.damage = 12;
+                this.attackSpeed = 1100;
+                this.attackRange = 160;
+                this.setTint(0x00ffff);
+                break;
+                
+            case '빛 정령':
+                this.type = 'light';
+                this.damage = 18;
+                this.attackSpeed = 1300;
+                this.attackRange = 220;
+                this.setTint(0xffffaa);
+                break;
+                
             default:
                 this.type = 'normal';
                 this.damage = 10;
@@ -159,51 +175,60 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     }
 
     attack() {
-        // 타겟 적이 없으면 리턴
-        if (!this.targetEnemy) return;
-        
-        // 공격 효과음 재생
-        try {
-            this.scene.sound.play('attack');
-        } catch (error) {
-            console.error('공격 효과음 재생 중 오류:', error);
+        // 타겟 적이 없으면 가장 가까운 적 찾기
+        if (!this.targetEnemy) {
+            this.findNearestEnemy();
         }
         
-        // 정령 타입에 따른 공격 방식
-        switch (this.type) {
-            case 'fire':
-                this.fireAttack();
-                break;
+        // 타겟 적이 있으면 공격
+        if (this.targetEnemy && this.targetEnemy.active) {
+            // 적과의 거리 계산
+            const distance = Phaser.Math.Distance.Between(
+                this.x, this.y,
+                this.targetEnemy.x, this.targetEnemy.y
+            );
+            
+            // 공격 범위 내에 있으면 공격
+            if (distance <= this.attackRange) {
+                // 정령 타입에 따른 공격 방식
+                switch (this.type) {
+                    case 'normal':
+                        this.normalAttack();
+                        break;
+                    case 'fire':
+                        this.fireAttack();
+                        break;
+                    case 'water':
+                        this.waterAttack();
+                        break;
+                    case 'wind':
+                        this.windAttack();
+                        break;
+                    case 'earth':
+                        this.earthAttack();
+                        break;
+                    case 'lightning':
+                        this.lightningAttack();
+                        break;
+                    case 'ice':
+                        this.iceAttack();
+                        break;
+                    case 'light':
+                        this.lightAttack();
+                        break;
+                }
                 
-            case 'water':
-                this.waterAttack();
-                break;
-                
-            case 'wind':
-                this.windAttack();
-                break;
-                
-            case 'earth':
-                this.earthAttack();
-                break;
-                
-            case 'lightning':
-                this.lightningAttack();
-                break;
-                
-            default:
-                this.normalAttack();
-                break;
+                // 효과음 재생
+                try {
+                    this.scene.sound.play('spirit_attack');
+                } catch (error) {
+                    console.error('효과음 재생 중 오류 발생:', error);
+                }
+            }
+        } else {
+            // 타겟 적이 없거나 비활성화되었으면 새로운 타겟 찾기
+            this.targetEnemy = null;
         }
-        
-        // 공격 시각 효과
-        this.scene.tweens.add({
-            targets: this,
-            scaleX: 1.2,
-            scaleY: 1.2,
-            duration: 100,
-            yoyo: true
-        });
     }
     
     normalAttack() {
@@ -363,26 +388,28 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     }
     
     useSpecialAbility() {
-        // 정령 타입에 따른 특수 능력
+        // 특수 능력 사용
         switch (this.type) {
             case 'fire':
                 this.fireSpecialAbility();
                 break;
-                
             case 'water':
                 this.waterSpecialAbility();
                 break;
-                
             case 'wind':
                 this.windSpecialAbility();
                 break;
-                
             case 'earth':
                 this.earthSpecialAbility();
                 break;
-                
             case 'lightning':
                 this.lightningSpecialAbility();
+                break;
+            case 'ice':
+                this.iceSpecialAbility();
+                break;
+            case 'light':
+                this.lightSpecialAbility();
                 break;
         }
     }
@@ -614,6 +641,343 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
                 effect.destroy();
             }
         });
+    }
+
+    // 얼음 정령 공격
+    iceAttack() {
+        if (!this.targetEnemy) return;
+        
+        // 얼음 공격 효과 생성
+        const attackEffect = this.createAttackEffect(
+            this.targetEnemy.x,
+            this.targetEnemy.y,
+            0x00ffff,
+            1.2
+        );
+        
+        // 얼음 공격 애니메이션
+        this.scene.tweens.add({
+            targets: attackEffect,
+            scale: 0.5,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+                attackEffect.destroy();
+            }
+        });
+        
+        // 적에게 데미지 적용
+        this.targetEnemy.takeDamage(this.damage);
+        
+        // 얼음 효과: 적 이동 속도 감소 (30% 확률)
+        if (Phaser.Math.Between(1, 100) <= 30) {
+            // 이미 감속 효과가 있는지 확인
+            if (!this.targetEnemy.slowed) {
+                // 원래 속도 저장
+                this.targetEnemy.originalSpeed = this.targetEnemy.speed;
+                
+                // 속도 감소 (50%)
+                this.targetEnemy.speed *= 0.5;
+                this.targetEnemy.slowed = true;
+                
+                // 얼음 효과 표시
+                this.targetEnemy.setTint(0x00ffff);
+                
+                // 3초 후 효과 해제
+                this.scene.time.delayedCall(3000, () => {
+                    if (this.targetEnemy && this.targetEnemy.active) {
+                        this.targetEnemy.speed = this.targetEnemy.originalSpeed;
+                        this.targetEnemy.slowed = false;
+                        this.targetEnemy.clearTint();
+                    }
+                });
+                
+                // 얼음 효과 텍스트 표시
+                const text = this.scene.add.text(
+                    this.targetEnemy.x,
+                    this.targetEnemy.y - 30,
+                    '빙결!',
+                    {
+                        font: '16px Arial',
+                        fill: '#00ffff'
+                    }
+                ).setOrigin(0.5);
+                
+                // 텍스트 애니메이션
+                this.scene.tweens.add({
+                    targets: text,
+                    y: text.y - 20,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => {
+                        text.destroy();
+                    }
+                });
+            }
+        }
+    }
+    
+    // 빛 정령 공격
+    lightAttack() {
+        if (!this.targetEnemy) return;
+        
+        // 빛 공격 효과 생성
+        const attackEffect = this.createAttackEffect(
+            this.targetEnemy.x,
+            this.targetEnemy.y,
+            0xffffaa,
+            1.5
+        );
+        
+        // 빛 공격 애니메이션
+        this.scene.tweens.add({
+            targets: attackEffect,
+            scale: 2,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+                attackEffect.destroy();
+            }
+        });
+        
+        // 적에게 데미지 적용
+        this.targetEnemy.takeDamage(this.damage);
+        
+        // 빛 효과: 주변 적들에게 추가 데미지 (20% 확률)
+        if (Phaser.Math.Between(1, 100) <= 20) {
+            // 주변 적 찾기 (공격 범위의 1.5배 내)
+            const nearbyEnemies = this.scene.enemies.getChildren().filter(enemy => {
+                if (enemy === this.targetEnemy || !enemy.active) return false;
+                
+                const distance = Phaser.Math.Distance.Between(
+                    this.targetEnemy.x, this.targetEnemy.y,
+                    enemy.x, enemy.y
+                );
+                
+                return distance <= this.attackRange * 1.5;
+            });
+            
+            // 주변 적들에게 추가 데미지
+            nearbyEnemies.forEach(enemy => {
+                // 빛 확산 효과 생성
+                const spreadEffect = this.createAttackEffect(
+                    enemy.x,
+                    enemy.y,
+                    0xffffaa,
+                    1
+                );
+                
+                // 확산 효과 애니메이션
+                this.scene.tweens.add({
+                    targets: spreadEffect,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 300,
+                    onComplete: () => {
+                        spreadEffect.destroy();
+                    }
+                });
+                
+                // 추가 데미지 (기본 데미지의 50%)
+                enemy.takeDamage(this.damage * 0.5);
+            });
+            
+            // 빛 확산 효과 텍스트 표시
+            if (nearbyEnemies.length > 0) {
+                const text = this.scene.add.text(
+                    this.targetEnemy.x,
+                    this.targetEnemy.y - 30,
+                    '빛 확산!',
+                    {
+                        font: '16px Arial',
+                        fill: '#ffffaa'
+                    }
+                ).setOrigin(0.5);
+                
+                // 텍스트 애니메이션
+                this.scene.tweens.add({
+                    targets: text,
+                    y: text.y - 20,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => {
+                        text.destroy();
+                    }
+                });
+            }
+        }
+    }
+    
+    // 얼음 정령 특수 능력: 광역 빙결
+    iceSpecialAbility() {
+        // 플레이어 주변 모든 적에게 빙결 효과 적용
+        const enemies = this.scene.enemies.getChildren().filter(enemy => {
+            if (!enemy.active) return false;
+            
+            const distance = Phaser.Math.Distance.Between(
+                this.scene.player.x, this.scene.player.y,
+                enemy.x, enemy.y
+            );
+            
+            return distance <= this.attackRange * 2;
+        });
+        
+        if (enemies.length === 0) return;
+        
+        // 빙결 효과 생성
+        const freezeEffect = this.scene.add.circle(
+            this.scene.player.x,
+            this.scene.player.y,
+            this.attackRange * 2,
+            0x00ffff,
+            0.3
+        );
+        
+        // 효과 애니메이션
+        this.scene.tweens.add({
+            targets: freezeEffect,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => {
+                freezeEffect.destroy();
+            }
+        });
+        
+        // 모든 적에게 빙결 효과 적용
+        enemies.forEach(enemy => {
+            // 원래 속도 저장
+            enemy.originalSpeed = enemy.speed;
+            
+            // 속도 감소 (70%)
+            enemy.speed *= 0.3;
+            enemy.slowed = true;
+            
+            // 얼음 효과 표시
+            enemy.setTint(0x00ffff);
+            
+            // 추가 데미지
+            enemy.takeDamage(this.damage * this.level * 0.5);
+            
+            // 5초 후 효과 해제
+            this.scene.time.delayedCall(5000, () => {
+                if (enemy && enemy.active) {
+                    enemy.speed = enemy.originalSpeed;
+                    enemy.slowed = false;
+                    enemy.clearTint();
+                }
+            });
+        });
+        
+        // 특수 능력 텍스트 표시
+        const text = this.scene.add.text(
+            this.scene.player.x,
+            this.scene.player.y - 50,
+            '광역 빙결!',
+            {
+                font: '20px Arial',
+                fill: '#00ffff',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        ).setOrigin(0.5);
+        
+        // 텍스트 애니메이션
+        this.scene.tweens.add({
+            targets: text,
+            y: text.y - 30,
+            alpha: 0,
+            duration: 1500,
+            onComplete: () => {
+                text.destroy();
+            }
+        });
+        
+        // 효과음 재생
+        try {
+            this.scene.sound.play('ice_special');
+        } catch (error) {
+            console.error('효과음 재생 중 오류 발생:', error);
+        }
+    }
+    
+    // 빛 정령 특수 능력: 치유의 빛
+    lightSpecialAbility() {
+        // 플레이어 치유
+        const healAmount = 10 + (this.level * 2);
+        this.scene.player.heal(healAmount);
+        
+        // 치유 효과 생성
+        const healEffect = this.scene.add.circle(
+            this.scene.player.x,
+            this.scene.player.y,
+            50,
+            0xffffaa,
+            0.5
+        );
+        
+        // 효과 애니메이션
+        this.scene.tweens.add({
+            targets: healEffect,
+            scale: 3,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => {
+                healEffect.destroy();
+            }
+        });
+        
+        // 치유 파티클 효과
+        for (let i = 0; i < 20; i++) {
+            const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+            const distance = Phaser.Math.FloatBetween(20, 100);
+            
+            const x = this.scene.player.x + Math.cos(angle) * distance;
+            const y = this.scene.player.y + Math.sin(angle) * distance;
+            
+            const particle = this.scene.add.circle(x, y, 5, 0xffffaa, 1);
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.scene.player.x,
+                y: this.scene.player.y,
+                alpha: 0,
+                duration: Phaser.Math.FloatBetween(500, 1000),
+                onComplete: () => {
+                    particle.destroy();
+                }
+            });
+        }
+        
+        // 특수 능력 텍스트 표시
+        const text = this.scene.add.text(
+            this.scene.player.x,
+            this.scene.player.y - 50,
+            `치유의 빛! +${healAmount}`,
+            {
+                font: '20px Arial',
+                fill: '#ffffaa',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        ).setOrigin(0.5);
+        
+        // 텍스트 애니메이션
+        this.scene.tweens.add({
+            targets: text,
+            y: text.y - 30,
+            alpha: 0,
+            duration: 1500,
+            onComplete: () => {
+                text.destroy();
+            }
+        });
+        
+        // 효과음 재생
+        try {
+            this.scene.sound.play('heal_sound');
+        } catch (error) {
+            console.error('효과음 재생 중 오류 발생:', error);
+        }
     }
 }
 

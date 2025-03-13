@@ -4,10 +4,20 @@ const Enemy = require('../entities/Enemy').Enemy;
 const Item = require('../entities/Item').Item;
 const EnemySpawner = require('../systems/EnemySpawner').EnemySpawner;
 const LevelSystem = require('../systems/LevelSystem').LevelSystem;
+const AchievementSystem = require('../systems/AchievementSystem').AchievementSystem;
 
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
+        this.difficulty = 'normal'; // 기본 난이도
+    }
+
+    init(data) {
+        // MainMenuScene에서 전달받은 난이도 설정
+        if (data && data.difficulty) {
+            this.difficulty = data.difficulty;
+            this.logDebug(`게임 난이도 설정: ${this.difficulty}`);
+        }
     }
 
     create() {
@@ -48,10 +58,13 @@ class GameScene extends Phaser.Scene {
             // 게임 시작
             this.startGame();
             
+            // 난이도 표시
+            this.showDifficultyIndicator();
+            
             this.logDebug('GameScene 생성 완료');
         } catch (error) {
-            this.logDebug(`GameScene 생성 중 오류: ${error.message}`);
-            console.error('GameScene 생성 중 오류:', error);
+            console.error('GameScene 생성 중 오류 발생:', error);
+            this.logDebug('GameScene 생성 오류: ' + error.message);
         }
     }
     
@@ -106,6 +119,61 @@ class GameScene extends Phaser.Scene {
         // 적 스포너 초기화
         const EnemySpawner = require('../systems/EnemySpawner').EnemySpawner;
         this.enemySpawner = new EnemySpawner(this);
+        
+        // 성취 시스템 초기화
+        const AchievementSystem = require('../systems/AchievementSystem').AchievementSystem;
+        this.achievementSystem = new AchievementSystem(this);
+        
+        // 난이도에 따른 게임 설정 조정
+        this.applyDifficultySettings();
+        
+        // 생존 시간 타이머 (성취 시스템용)
+        this.survivalTime = 0;
+        this.survivalTimer = this.time.addEvent({
+            delay: 1000, // 1초마다
+            callback: this.updateSurvivalTime,
+            callbackScope: this,
+            loop: true
+        });
+    }
+    
+    // 난이도 설정 적용
+    applyDifficultySettings() {
+        switch (this.difficulty) {
+            case 'easy':
+                // 쉬운 난이도 설정
+                this.enemySpawner.spawnRate = 3000; // 적 스폰 간격 증가 (느리게)
+                this.enemySpawner.maxEnemies = 10; // 최대 적 수 감소
+                this.enemySpawner.bossWaveInterval = 5; // 보스 웨이브 간격 증가
+                this.player.maxHealth = 150; // 플레이어 최대 체력 증가
+                this.player.health = 150; // 현재 체력도 증가
+                this.player.healAmount = 30; // 회복량 증가
+                break;
+                
+            case 'normal':
+                // 보통 난이도 설정 (기본값 유지)
+                this.enemySpawner.spawnRate = 2000;
+                this.enemySpawner.maxEnemies = 15;
+                this.enemySpawner.bossWaveInterval = 3;
+                this.player.maxHealth = 100;
+                this.player.health = 100;
+                this.player.healAmount = 20;
+                break;
+                
+            case 'hard':
+                // 어려운 난이도 설정
+                this.enemySpawner.spawnRate = 1500; // 적 스폰 간격 감소 (빠르게)
+                this.enemySpawner.maxEnemies = 20; // 최대 적 수 증가
+                this.enemySpawner.bossWaveInterval = 2; // 보스 웨이브 간격 감소
+                this.enemySpawner.enemyHealthMultiplier = 1.5; // 적 체력 증가
+                this.enemySpawner.enemyDamageMultiplier = 1.5; // 적 공격력 증가
+                this.player.maxHealth = 80; // 플레이어 최대 체력 감소
+                this.player.health = 80; // 현재 체력도 감소
+                this.player.healAmount = 15; // 회복량 감소
+                break;
+        }
+        
+        this.logDebug(`난이도 설정 적용됨: ${this.difficulty}`);
     }
     
     setupCollisions() {
@@ -143,6 +211,9 @@ class GameScene extends Phaser.Scene {
         
         // 게임 오버 화면 생성
         this.createGameOverScreen();
+        
+        // 성취 버튼 추가
+        this.createAchievementButton();
     }
     
     createGameUI() {
@@ -621,8 +692,11 @@ class GameScene extends Phaser.Scene {
     }
     
     updateSurvivalTime() {
-        // 생존 시간 업데이트
-        this.survivalTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        // 생존 시간 증가
+        this.survivalTime++;
+        
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('survivalTime', { time: this.survivalTime });
     }
     
     formatTime(seconds) {
@@ -684,25 +758,41 @@ class GameScene extends Phaser.Scene {
     }
     
     handlePlayerEnemyCollision(player, enemy) {
-        // 플레이어가 무적 상태면 리턴
+        // 플레이어가 무적 상태면 충돌 무시
         if (player.invulnerable) return;
         
-        // 플레이어 데미지 처리
+        // 플레이어 데미지 적용
         player.takeDamage(enemy.damage);
         
-        // 체력 바 업데이트
-        this.updateHealthBar();
+        // 플레이어 넉백
+        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+        player.setVelocity(
+            Math.cos(angle) * 200,
+            Math.sin(angle) * 200
+        );
         
-        // 게임 오버 체크
-        if (player.health <= 0) {
-            this.gameOver = true;
-            this.showGameOver();
-        }
+        // 0.5초 후 속도 초기화
+        this.time.delayedCall(500, () => {
+            if (player.active) {
+                player.setVelocity(0, 0);
+            }
+        });
     }
     
     handlePlayerItemCollision(player, item) {
         // 아이템 효과 적용
         item.applyEffect(player);
+        
+        // 아이템 제거
+        item.destroy();
+        
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('itemCollected');
+        
+        // 정령 아이템인 경우 정령 수집 성취 업데이트
+        if (item.type === 'spirit') {
+            this.achievementSystem.updateAchievements('spiritCollected');
+        }
     }
     
     togglePause() {
@@ -858,6 +948,115 @@ class GameScene extends Phaser.Scene {
             // 오류가 발생해도 메인 메뉴로 이동 시도
             this.scene.start('MainMenuScene');
         }
+    }
+
+    // 난이도 표시기 생성
+    showDifficultyIndicator() {
+        const difficultyText = {
+            'easy': '쉬움',
+            'normal': '보통',
+            'hard': '어려움'
+        };
+        
+        const difficultyColors = {
+            'easy': '#00ff00',
+            'normal': '#ffff00',
+            'hard': '#ff0000'
+        };
+        
+        // 난이도 표시 텍스트
+        const text = this.add.text(
+            this.cameras.main.width - 10,
+            10,
+            `난이도: ${difficultyText[this.difficulty]}`,
+            {
+                font: '16px Arial',
+                fill: difficultyColors[this.difficulty]
+            }
+        ).setOrigin(1, 0);
+        
+        // 3초 후 페이드 아웃
+        this.time.delayedCall(3000, () => {
+            this.tweens.add({
+                targets: text,
+                alpha: 0,
+                duration: 1000,
+                ease: 'Power2'
+            });
+        });
+    }
+
+    // 성취 버튼 생성
+    createAchievementButton() {
+        // 성취 버튼 배경
+        const achievementButton = this.add.circle(
+            this.cameras.main.width - 30,
+            70,
+            20,
+            0xffff00,
+            1
+        );
+        achievementButton.setScrollFactor(0);
+        achievementButton.setDepth(100);
+        achievementButton.setInteractive();
+        
+        // 성취 버튼 아이콘
+        const achievementIcon = this.add.text(
+            this.cameras.main.width - 30,
+            70,
+            '★',
+            {
+                font: '24px Arial',
+                fill: '#000000'
+            }
+        ).setOrigin(0.5);
+        achievementIcon.setScrollFactor(0);
+        achievementIcon.setDepth(100);
+        
+        // 버튼 클릭 이벤트
+        achievementButton.on('pointerdown', () => {
+            this.showAchievementUI();
+        });
+        
+        // 버튼 호버 효과
+        achievementButton.on('pointerover', () => {
+            achievementButton.setScale(1.2);
+            achievementIcon.setScale(1.2);
+        });
+        
+        achievementButton.on('pointerout', () => {
+            achievementButton.setScale(1);
+            achievementIcon.setScale(1);
+        });
+    }
+    
+    // 성취 UI 표시
+    showAchievementUI() {
+        // 게임 일시정지
+        if (!this.gamePaused) {
+            this.togglePause();
+        }
+        
+        // 성취 UI 표시
+        this.achievementSystem.showAchievementUI();
+    }
+
+    // 적 처치 이벤트 처리
+    onEnemyKilled(enemy) {
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('enemyKilled', { enemyType: enemy.type });
+    }
+    
+    // 레벨업 이벤트 처리
+    onLevelUp(level) {
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('levelUp', { level: level });
+    }
+    
+    // 정령 업그레이드 이벤트 처리
+    onSpiritUpgraded() {
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('spiritUpgraded');
     }
 }
 
