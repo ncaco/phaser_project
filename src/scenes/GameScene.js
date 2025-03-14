@@ -10,6 +10,7 @@ class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
         this.difficulty = 'normal'; // 기본 난이도
+        this.uiElements = {}; // UI 요소 저장 객체
     }
 
     init(data) {
@@ -61,6 +62,9 @@ class GameScene extends Phaser.Scene {
             // 난이도 표시
             this.showDifficultyIndicator();
             
+            // 화면 크기 변경 이벤트 리스너 등록
+            this.scale.on('resize', this.handleResize, this);
+            
             this.logDebug('GameScene 생성 완료');
         } catch (error) {
             console.error('GameScene 생성 중 오류 발생:', error);
@@ -84,7 +88,7 @@ class GameScene extends Phaser.Scene {
         // 바닥 타일 생성
         this.groundTiles = [];
         
-        const tileSize = 128;
+        const tileSize = window.getScaledValue(128);
         const tilesX = Math.ceil(this.cameras.main.width / tileSize) + 2;
         const tilesY = Math.ceil(this.cameras.main.height / tileSize) + 2;
         
@@ -218,243 +222,378 @@ class GameScene extends Phaser.Scene {
     
     createGameUI() {
         // UI 컨테이너
-        this.gameUI = this.add.container(0, 0);
-        this.gameUI.setScrollFactor(0);
-        this.gameUI.setDepth(100);
+        this.uiElements.gameUI = this.add.container(0, 0);
+        this.uiElements.gameUI.setScrollFactor(0);
+        this.uiElements.gameUI.setDepth(100);
+        
+        const padding = window.getScaledValue(20);
+        const barWidth = window.getScaledValue(200);
+        const barHeight = window.getScaledValue(20);
+        const barInnerHeight = window.getScaledValue(16);
         
         // 체력 바 배경
-        this.healthBarBg = this.add.rectangle(120, 30, 200, 20, 0x000000);
-        this.healthBarBg.setScrollFactor(0);
-        this.healthBarBg.setDepth(100);
+        this.uiElements.healthBarBg = this.add.rectangle(
+            padding + barWidth / 2, 
+            padding + barHeight / 2, 
+            barWidth, 
+            barHeight, 
+            0x000000
+        );
+        this.uiElements.healthBarBg.setScrollFactor(0);
+        this.uiElements.healthBarBg.setDepth(100);
         
         // 체력 바
-        this.healthBar = this.add.rectangle(20, 30, 0, 16, 0xff0000);
-        this.healthBar.setOrigin(0, 0.5);
-        this.healthBar.setScrollFactor(0);
-        this.healthBar.setDepth(100);
+        this.uiElements.healthBar = this.add.rectangle(
+            padding, 
+            padding + barHeight / 2, 
+            0, 
+            barInnerHeight, 
+            0xff0000
+        );
+        this.uiElements.healthBar.setOrigin(0, 0.5);
+        this.uiElements.healthBar.setScrollFactor(0);
+        this.uiElements.healthBar.setDepth(100);
         
         // 체력 텍스트
-        this.healthText = this.add.text(120, 30, '', {
-            fontFamily: 'Arial',
-            fontSize: '14px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
-        });
-        this.healthText.setOrigin(0.5);
-        this.healthText.setScrollFactor(0);
-        this.healthText.setDepth(100);
+        this.uiElements.healthText = this.add.text(
+            padding + barWidth / 2, 
+            padding + barHeight / 2, 
+            '', 
+            {
+                fontFamily: 'Arial',
+                fontSize: `${window.getScaledFontSize(14)}px`,
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        this.uiElements.healthText.setOrigin(0.5);
+        this.uiElements.healthText.setScrollFactor(0);
+        this.uiElements.healthText.setDepth(100);
         
         // 웨이브 정보 텍스트
-        this.waveText = this.add.text(
-            this.cameras.main.width - 20,
-            20,
+        this.uiElements.waveText = this.add.text(
+            this.cameras.main.width - padding,
+            padding,
             '',
             {
                 fontFamily: 'Arial',
-                fontSize: '16px',
+                fontSize: `${window.getScaledFontSize(16)}px`,
                 color: '#ffffff',
                 stroke: '#000000',
                 strokeThickness: 3,
                 align: 'right'
             }
         );
-        this.waveText.setOrigin(1, 0);
-        this.waveText.setScrollFactor(0);
-        this.waveText.setDepth(100);
+        this.uiElements.waveText.setOrigin(1, 0);
+        this.uiElements.waveText.setScrollFactor(0);
+        this.uiElements.waveText.setDepth(100);
         
         // 일시정지 버튼
-        this.pauseButton = this.add.rectangle(
-            this.cameras.main.width - 30,
-            70,
-            40,
-            40,
+        const pauseButtonSize = window.getScaledValue(40);
+        this.uiElements.pauseButton = this.add.rectangle(
+            this.cameras.main.width - padding - pauseButtonSize / 2,
+            padding * 2 + pauseButtonSize / 2,
+            pauseButtonSize,
+            pauseButtonSize,
             0x333333,
             0.8
         );
-        this.pauseButton.setScrollFactor(0);
-        this.pauseButton.setDepth(100);
-        this.pauseButton.setInteractive();
+        this.uiElements.pauseButton.setScrollFactor(0);
+        this.uiElements.pauseButton.setDepth(100);
+        this.uiElements.pauseButton.setInteractive();
         
         // 일시정지 아이콘
-        this.pauseIcon = this.add.rectangle(
-            this.cameras.main.width - 30,
-            70,
-            15,
-            20,
+        const pauseIconSize = window.getScaledValue(15);
+        this.uiElements.pauseIcon = this.add.rectangle(
+            this.cameras.main.width - padding - pauseButtonSize / 2,
+            padding * 2 + pauseButtonSize / 2,
+            pauseIconSize,
+            pauseIconSize * 1.3,
             0xffffff
         );
-        this.pauseIcon.setScrollFactor(0);
-        this.pauseIcon.setDepth(101);
+        this.uiElements.pauseIcon.setScrollFactor(0);
+        this.uiElements.pauseIcon.setDepth(101);
         
         // 일시정지 버튼 이벤트
-        this.pauseButton.on('pointerdown', () => {
+        this.uiElements.pauseButton.on('pointerdown', () => {
             this.togglePause();
         });
         
         // 일시정지 버튼 호버 효과
-        this.pauseButton.on('pointerover', () => {
-            this.pauseButton.fillColor = 0x555555;
+        this.uiElements.pauseButton.on('pointerover', () => {
+            this.uiElements.pauseButton.fillColor = 0x555555;
         });
         
-        this.pauseButton.on('pointerout', () => {
-            this.pauseButton.fillColor = 0x333333;
+        this.uiElements.pauseButton.on('pointerout', () => {
+            this.uiElements.pauseButton.fillColor = 0x333333;
         });
         
         // 게임 UI 컨테이너에 추가
-        this.gameUI.add([
-            this.healthBarBg,
-            this.healthBar,
-            this.healthText,
-            this.waveText,
-            this.pauseButton,
-            this.pauseIcon
+        this.uiElements.gameUI.add([
+            this.uiElements.healthBarBg,
+            this.uiElements.healthBar,
+            this.uiElements.healthText,
+            this.uiElements.waveText,
+            this.uiElements.pauseButton,
+            this.uiElements.pauseIcon
         ]);
+        
+        // 모바일 환경에서 가상 조이스틱 추가
+        if (window.gameSettings.isMobile) {
+            this.createVirtualJoystick();
+        }
         
         // UI 업데이트
         this.updateHealthBar();
         this.updateWaveInfo();
     }
     
+    createVirtualJoystick() {
+        // 가상 조이스틱 생성
+        const joystickRadius = window.getScaledValue(80);
+        const joystickX = joystickRadius + window.getScaledValue(30);
+        const joystickY = this.cameras.main.height - joystickRadius - window.getScaledValue(30);
+        
+        // 조이스틱 배경
+        this.uiElements.joystickBg = this.add.circle(
+            joystickX,
+            joystickY,
+            joystickRadius,
+            0x000000,
+            0.5
+        );
+        this.uiElements.joystickBg.setScrollFactor(0);
+        this.uiElements.joystickBg.setDepth(90);
+        
+        // 조이스틱 핸들
+        this.uiElements.joystickHandle = this.add.circle(
+            joystickX,
+            joystickY,
+            joystickRadius / 2,
+            0xffffff,
+            0.7
+        );
+        this.uiElements.joystickHandle.setScrollFactor(0);
+        this.uiElements.joystickHandle.setDepth(91);
+        
+        // 조이스틱 상태
+        this.joystick = {
+            pointer: null,
+            position: { x: joystickX, y: joystickY },
+            center: { x: joystickX, y: joystickY },
+            radius: joystickRadius,
+            isActive: false,
+            direction: { x: 0, y: 0 }
+        };
+        
+        // 조이스틱 이벤트 설정
+        this.input.on('pointerdown', (pointer) => {
+            // 조이스틱 영역 내에서 터치했는지 확인
+            const distance = Phaser.Math.Distance.Between(
+                pointer.x,
+                pointer.y,
+                this.joystick.center.x,
+                this.joystick.center.y
+            );
+            
+            if (distance <= this.joystick.radius) {
+                this.joystick.pointer = pointer;
+                this.joystick.isActive = true;
+            }
+        });
+        
+        this.input.on('pointermove', (pointer) => {
+            if (this.joystick.isActive && this.joystick.pointer && this.joystick.pointer.id === pointer.id) {
+                // 조이스틱 위치 계산
+                const dx = pointer.x - this.joystick.center.x;
+                const dy = pointer.y - this.joystick.center.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // 방향 벡터 계산
+                if (distance > 0) {
+                    this.joystick.direction.x = dx / distance;
+                    this.joystick.direction.y = dy / distance;
+                } else {
+                    this.joystick.direction.x = 0;
+                    this.joystick.direction.y = 0;
+                }
+                
+                // 조이스틱 핸들 위치 제한
+                if (distance > this.joystick.radius) {
+                    const angle = Math.atan2(dy, dx);
+                    this.joystick.position.x = this.joystick.center.x + Math.cos(angle) * this.joystick.radius;
+                    this.joystick.position.y = this.joystick.center.y + Math.sin(angle) * this.joystick.radius;
+                } else {
+                    this.joystick.position.x = pointer.x;
+                    this.joystick.position.y = pointer.y;
+                }
+                
+                // 조이스틱 핸들 업데이트
+                this.uiElements.joystickHandle.setPosition(this.joystick.position.x, this.joystick.position.y);
+            }
+        });
+        
+        this.input.on('pointerup', (pointer) => {
+            if (this.joystick.isActive && this.joystick.pointer && this.joystick.pointer.id === pointer.id) {
+                // 조이스틱 초기화
+                this.joystick.isActive = false;
+                this.joystick.direction.x = 0;
+                this.joystick.direction.y = 0;
+                this.joystick.position.x = this.joystick.center.x;
+                this.joystick.position.y = this.joystick.center.y;
+                
+                // 조이스틱 핸들 위치 초기화
+                this.uiElements.joystickHandle.setPosition(this.joystick.center.x, this.joystick.center.y);
+            }
+        });
+    }
+    
     createPauseMenu() {
         // 일시정지 메뉴 컨테이너
-        this.pauseMenu = this.add.container(0, 0);
-        this.pauseMenu.setScrollFactor(0);
-        this.pauseMenu.setDepth(200);
-        this.pauseMenu.setVisible(false);
+        this.uiElements.pauseMenu = this.add.container(0, 0);
+        this.uiElements.pauseMenu.setScrollFactor(0);
+        this.uiElements.pauseMenu.setDepth(200);
+        this.uiElements.pauseMenu.setVisible(false);
+        
+        const panelWidth = window.getScaledValue(400);
+        const panelHeight = window.getScaledValue(300);
+        const buttonWidth = window.getScaledValue(300);
+        const buttonHeight = window.getScaledValue(60);
+        const buttonSpacing = window.getScaledValue(70);
         
         // 배경 패널
-        this.pauseMenuBg = this.add.rectangle(
+        this.uiElements.pauseMenuBg = this.add.rectangle(
             this.cameras.main.centerX,
             this.cameras.main.centerY,
-            400,
-            300,
+            panelWidth,
+            panelHeight,
             0x000000,
             0.8
         );
         
         // 제목 텍스트
-        this.pauseMenuTitle = this.add.text(
+        this.uiElements.pauseMenuTitle = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY - 100,
+            this.cameras.main.centerY - window.getScaledValue(100),
             '일시정지',
             {
                 fontFamily: 'Arial',
-                fontSize: '32px',
+                fontSize: `${window.getScaledFontSize(32)}px`,
                 color: '#ffffff'
             }
         );
-        this.pauseMenuTitle.setOrigin(0.5);
+        this.uiElements.pauseMenuTitle.setOrigin(0.5);
         
         // 계속하기 버튼
-        this.resumeButton = this.add.rectangle(
+        this.uiElements.resumeButton = this.add.rectangle(
             this.cameras.main.centerX,
-            this.cameras.main.centerY - 20,
-            300,
-            60,
+            this.cameras.main.centerY - window.getScaledValue(20),
+            buttonWidth,
+            buttonHeight,
             0x4CAF50, // 녹색 계열
             0.9
         );
-        this.resumeButton.setInteractive();
-        this.resumeButton.setStrokeStyle(2, 0xFFFFFF);
+        this.uiElements.resumeButton.setInteractive();
+        this.uiElements.resumeButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 계속하기 텍스트
-        this.resumeText = this.add.text(
+        this.uiElements.resumeText = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY - 20,
+            this.cameras.main.centerY - window.getScaledValue(20),
             '계속하기',
             {
                 fontFamily: 'Arial',
-                fontSize: '28px',
+                fontSize: `${window.getScaledFontSize(28)}px`,
                 color: '#ffffff',
                 stroke: '#000000',
                 strokeThickness: 2
             }
         );
-        this.resumeText.setOrigin(0.5);
+        this.uiElements.resumeText.setOrigin(0.5);
         
         // 메인 메뉴 버튼
-        this.mainMenuButton = this.add.rectangle(
+        this.uiElements.mainMenuButton = this.add.rectangle(
             this.cameras.main.centerX,
-            this.cameras.main.centerY + 50,
-            300,
-            60,
+            this.cameras.main.centerY + window.getScaledValue(50),
+            buttonWidth,
+            buttonHeight,
             0x2196F3, // 파란색 계열
             0.9
         );
-        this.mainMenuButton.setInteractive();
-        this.mainMenuButton.setStrokeStyle(2, 0xFFFFFF);
+        this.uiElements.mainMenuButton.setInteractive();
+        this.uiElements.mainMenuButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 메인 메뉴 텍스트
-        this.mainMenuText = this.add.text(
+        this.uiElements.mainMenuText = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY + 50,
+            this.cameras.main.centerY + window.getScaledValue(50),
             '메인 메뉴로',
             {
                 fontFamily: 'Arial',
-                fontSize: '28px',
+                fontSize: `${window.getScaledFontSize(28)}px`,
                 color: '#ffffff',
                 stroke: '#000000',
                 strokeThickness: 2
             }
         );
-        this.mainMenuText.setOrigin(0.5);
+        this.uiElements.mainMenuText.setOrigin(0.5);
         
         // 버튼 이벤트
-        this.resumeButton.on('pointerdown', () => {
+        this.uiElements.resumeButton.on('pointerdown', () => {
             this.togglePause();
         });
         
-        this.mainMenuButton.on('pointerdown', () => {
+        this.uiElements.mainMenuButton.on('pointerdown', () => {
             console.log('메인 메뉴로 버튼 클릭됨 (일시정지 메뉴)');
             this.scene.start('MainMenuScene');
         });
         
         // 버튼 호버 효과
-        this.resumeButton.on('pointerover', () => {
-            this.resumeButton.fillColor = 0x66BB6A; // 더 밝은 녹색
-            this.resumeButton.setScale(1.05);
-            this.resumeText.setScale(1.05);
+        this.uiElements.resumeButton.on('pointerover', () => {
+            this.uiElements.resumeButton.fillColor = 0x66BB6A; // 더 밝은 녹색
+            this.uiElements.resumeButton.setScale(1.05);
+            this.uiElements.resumeText.setScale(1.05);
         });
         
-        this.resumeButton.on('pointerout', () => {
-            this.resumeButton.fillColor = 0x4CAF50; // 원래 녹색
-            this.resumeButton.setScale(1.0);
-            this.resumeText.setScale(1.0);
+        this.uiElements.resumeButton.on('pointerout', () => {
+            this.uiElements.resumeButton.fillColor = 0x4CAF50; // 원래 녹색
+            this.uiElements.resumeButton.setScale(1.0);
+            this.uiElements.resumeText.setScale(1.0);
         });
         
-        this.mainMenuButton.on('pointerover', () => {
-            this.mainMenuButton.fillColor = 0x42A5F5; // 더 밝은 파란색
-            this.mainMenuButton.setScale(1.05);
-            this.mainMenuText.setScale(1.05);
+        this.uiElements.mainMenuButton.on('pointerover', () => {
+            this.uiElements.mainMenuButton.fillColor = 0x42A5F5; // 더 밝은 파란색
+            this.uiElements.mainMenuButton.setScale(1.05);
+            this.uiElements.mainMenuText.setScale(1.05);
         });
         
-        this.mainMenuButton.on('pointerout', () => {
-            this.mainMenuButton.fillColor = 0x2196F3; // 원래 파란색
-            this.mainMenuButton.setScale(1.0);
-            this.mainMenuText.setScale(1.0);
+        this.uiElements.mainMenuButton.on('pointerout', () => {
+            this.uiElements.mainMenuButton.fillColor = 0x2196F3; // 원래 파란색
+            this.uiElements.mainMenuButton.setScale(1.0);
+            this.uiElements.mainMenuText.setScale(1.0);
         });
         
         // 일시정지 메뉴 컨테이너에 추가
-        this.pauseMenu.add([
-            this.pauseMenuBg,
-            this.pauseMenuTitle,
-            this.resumeButton,
-            this.resumeText,
-            this.mainMenuButton,
-            this.mainMenuText
+        this.uiElements.pauseMenu.add([
+            this.uiElements.pauseMenuBg,
+            this.uiElements.pauseMenuTitle,
+            this.uiElements.resumeButton,
+            this.uiElements.resumeText,
+            this.uiElements.mainMenuButton,
+            this.uiElements.mainMenuText
         ]);
     }
     
     createGameOverScreen() {
         // 게임 오버 화면 컨테이너
-        this.gameOverScreen = this.add.container(0, 0);
-        this.gameOverScreen.setScrollFactor(0);
-        this.gameOverScreen.setDepth(200);
-        this.gameOverScreen.setVisible(false);
+        this.uiElements.gameOverScreen = this.add.container(0, 0);
+        this.uiElements.gameOverScreen.setScrollFactor(0);
+        this.uiElements.gameOverScreen.setDepth(200);
+        this.uiElements.gameOverScreen.setVisible(false);
         
         // 배경 패널
-        this.gameOverBg = this.add.rectangle(
+        this.uiElements.gameOverBg = this.add.rectangle(
             this.cameras.main.centerX,
             this.cameras.main.centerY,
             500,
@@ -464,7 +603,7 @@ class GameScene extends Phaser.Scene {
         );
         
         // 게임 오버 텍스트
-        this.gameOverTitle = this.add.text(
+        this.uiElements.gameOverTitle = this.add.text(
             this.cameras.main.centerX,
             this.cameras.main.centerY - 120,
             '게임 오버',
@@ -476,10 +615,10 @@ class GameScene extends Phaser.Scene {
                 strokeThickness: 4
             }
         );
-        this.gameOverTitle.setOrigin(0.5);
+        this.uiElements.gameOverTitle.setOrigin(0.5);
         
         // 결과 텍스트
-        this.gameOverStats = this.add.text(
+        this.uiElements.gameOverStats = this.add.text(
             this.cameras.main.centerX,
             this.cameras.main.centerY - 30,
             '',
@@ -490,10 +629,10 @@ class GameScene extends Phaser.Scene {
                 align: 'center'
             }
         );
-        this.gameOverStats.setOrigin(0.5);
+        this.uiElements.gameOverStats.setOrigin(0.5);
         
         // 다시 시작 버튼
-        this.restartButton = this.add.rectangle(
+        this.uiElements.restartButton = this.add.rectangle(
             this.cameras.main.centerX,
             this.cameras.main.centerY + 80,
             300,
@@ -501,11 +640,11 @@ class GameScene extends Phaser.Scene {
             0x4CAF50, // 녹색 계열
             0.9
         );
-        this.restartButton.setInteractive();
-        this.restartButton.setStrokeStyle(2, 0xFFFFFF);
+        this.uiElements.restartButton.setInteractive();
+        this.uiElements.restartButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 다시 시작 텍스트
-        this.restartText = this.add.text(
+        this.uiElements.restartText = this.add.text(
             this.cameras.main.centerX,
             this.cameras.main.centerY + 80,
             '다시 시작',
@@ -517,10 +656,10 @@ class GameScene extends Phaser.Scene {
                 strokeThickness: 2
             }
         );
-        this.restartText.setOrigin(0.5);
+        this.uiElements.restartText.setOrigin(0.5);
         
         // 메인 메뉴 버튼
-        this.gameOverMenuButton = this.add.rectangle(
+        this.uiElements.gameOverMenuButton = this.add.rectangle(
             this.cameras.main.centerX,
             this.cameras.main.centerY + 150,
             300,
@@ -528,11 +667,11 @@ class GameScene extends Phaser.Scene {
             0x2196F3, // 파란색 계열
             0.9
         );
-        this.gameOverMenuButton.setInteractive();
-        this.gameOverMenuButton.setStrokeStyle(2, 0xFFFFFF);
+        this.uiElements.gameOverMenuButton.setInteractive();
+        this.uiElements.gameOverMenuButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 메인 메뉴 텍스트
-        this.gameOverMenuText = this.add.text(
+        this.uiElements.gameOverMenuText = this.add.text(
             this.cameras.main.centerX,
             this.cameras.main.centerY + 150,
             '메인 메뉴로',
@@ -544,53 +683,53 @@ class GameScene extends Phaser.Scene {
                 strokeThickness: 2
             }
         );
-        this.gameOverMenuText.setOrigin(0.5);
+        this.uiElements.gameOverMenuText.setOrigin(0.5);
         
         // 버튼 이벤트
-        this.restartButton.on('pointerdown', () => {
+        this.uiElements.restartButton.on('pointerdown', () => {
             console.log('다시 시작 버튼 클릭됨');
             this.scene.restart();
         });
         
-        this.gameOverMenuButton.on('pointerdown', () => {
+        this.uiElements.gameOverMenuButton.on('pointerdown', () => {
             console.log('메인 메뉴로 버튼 클릭됨');
             this.scene.start('MainMenuScene');
         });
         
         // 버튼 호버 효과
-        this.restartButton.on('pointerover', () => {
-            this.restartButton.fillColor = 0x66BB6A; // 더 밝은 녹색
-            this.restartButton.setScale(1.05);
-            this.restartText.setScale(1.05);
+        this.uiElements.restartButton.on('pointerover', () => {
+            this.uiElements.restartButton.fillColor = 0x66BB6A; // 더 밝은 녹색
+            this.uiElements.restartButton.setScale(1.05);
+            this.uiElements.restartText.setScale(1.05);
         });
         
-        this.restartButton.on('pointerout', () => {
-            this.restartButton.fillColor = 0x4CAF50; // 원래 녹색
-            this.restartButton.setScale(1.0);
-            this.restartText.setScale(1.0);
+        this.uiElements.restartButton.on('pointerout', () => {
+            this.uiElements.restartButton.fillColor = 0x4CAF50; // 원래 녹색
+            this.uiElements.restartButton.setScale(1.0);
+            this.uiElements.restartText.setScale(1.0);
         });
         
-        this.gameOverMenuButton.on('pointerover', () => {
-            this.gameOverMenuButton.fillColor = 0x42A5F5; // 더 밝은 파란색
-            this.gameOverMenuButton.setScale(1.05);
-            this.gameOverMenuText.setScale(1.05);
+        this.uiElements.gameOverMenuButton.on('pointerover', () => {
+            this.uiElements.gameOverMenuButton.fillColor = 0x42A5F5; // 더 밝은 파란색
+            this.uiElements.gameOverMenuButton.setScale(1.05);
+            this.uiElements.gameOverMenuText.setScale(1.05);
         });
         
-        this.gameOverMenuButton.on('pointerout', () => {
-            this.gameOverMenuButton.fillColor = 0x2196F3; // 원래 파란색
-            this.gameOverMenuButton.setScale(1.0);
-            this.gameOverMenuText.setScale(1.0);
+        this.uiElements.gameOverMenuButton.on('pointerout', () => {
+            this.uiElements.gameOverMenuButton.fillColor = 0x2196F3; // 원래 파란색
+            this.uiElements.gameOverMenuButton.setScale(1.0);
+            this.uiElements.gameOverMenuText.setScale(1.0);
         });
         
         // 게임 오버 화면 컨테이너에 추가
-        this.gameOverScreen.add([
-            this.gameOverBg,
-            this.gameOverTitle,
-            this.gameOverStats,
-            this.restartButton,
-            this.restartText,
-            this.gameOverMenuButton,
-            this.gameOverMenuText
+        this.uiElements.gameOverScreen.add([
+            this.uiElements.gameOverBg,
+            this.uiElements.gameOverTitle,
+            this.uiElements.gameOverStats,
+            this.uiElements.restartButton,
+            this.uiElements.restartText,
+            this.uiElements.gameOverMenuButton,
+            this.uiElements.gameOverMenuText
         ]);
     }
     
@@ -622,28 +761,36 @@ class GameScene extends Phaser.Scene {
     }
     
     update(time, delta) {
+        // 게임 오버 또는 일시정지 상태에서는 업데이트 중지
         if (this.gameOver || this.gamePaused) return;
         
         // 플레이어 업데이트
         if (this.player) {
-            this.player.update(this.cursors);
+            // 모바일 환경에서 조이스틱 입력 처리
+            if (window.gameSettings.isMobile && this.joystick && this.joystick.isActive) {
+                this.player.setVelocity(
+                    this.joystick.direction.x * this.player.speed,
+                    this.joystick.direction.y * this.player.speed
+                );
+            }
+            
+            this.player.update(time, delta);
         }
         
         // 적 업데이트
         this.enemies.getChildren().forEach(enemy => {
-            enemy.update();
+            enemy.update(time, delta);
         });
         
-        // 아이템 업데이트
-        this.items.getChildren().forEach(item => {
-            item.update();
-        });
+        // 배경 스크롤 효과
+        if (this.player && this.background) {
+            this.background.tilePositionX += this.player.body.velocity.x * 0.01;
+            this.background.tilePositionY += this.player.body.velocity.y * 0.01;
+        }
         
         // UI 업데이트
-        this.updateUI();
-        
-        // 배경 타일 업데이트
-        this.updateBackgroundTiles();
+        this.updateHealthBar();
+        this.updateWaveInfo();
     }
     
     updateUI() {
@@ -655,40 +802,21 @@ class GameScene extends Phaser.Scene {
     }
     
     updateHealthBar() {
-        if (!this.player) return;
+        if (!this.player || !this.uiElements.healthBar) return;
         
-        // 체력 비율 계산
-        const healthRatio = this.player.health / this.player.maxHealth;
+        const barWidth = window.getScaledValue(200);
+        const healthPercent = this.player.health / this.player.maxHealth;
+        const healthBarWidth = barWidth * healthPercent;
         
-        // 체력 바 너비 업데이트
-        this.healthBar.width = 200 * healthRatio;
-        
-        // 체력 텍스트 업데이트
-        this.healthText.setText(`${Math.ceil(this.player.health)} / ${this.player.maxHealth}`);
-        
-        // 체력에 따른 색상 변경
-        if (healthRatio > 0.6) {
-            this.healthBar.fillColor = 0x00ff00; // 녹색
-        } else if (healthRatio > 0.3) {
-            this.healthBar.fillColor = 0xffff00; // 노란색
-        } else {
-            this.healthBar.fillColor = 0xff0000; // 빨간색
-        }
+        this.uiElements.healthBar.width = healthBarWidth;
+        this.uiElements.healthText.setText(`${this.player.health}/${this.player.maxHealth}`);
     }
     
     updateWaveInfo() {
-        if (!this.enemySpawner) return;
+        if (!this.enemySpawner || !this.uiElements.waveText) return;
         
-        // 웨이브 정보 가져오기
-        const waveInfo = this.enemySpawner.getCurrentWaveInfo();
-        
-        // 웨이브 텍스트 업데이트
-        this.waveText.setText(
-            `웨이브: ${waveInfo.wave}\n` +
-            `적: ${waveInfo.enemiesKilled} / ${waveInfo.enemiesPerWave}\n` +
-            `난이도: ${waveInfo.difficulty.toFixed(1)}\n` +
-            `생존 시간: ${this.formatTime(this.survivalTime)}`
-        );
+        const waveInfo = `웨이브: ${this.enemySpawner.currentWave}\n적 처치: ${this.enemySpawner.enemiesKilled}`;
+        this.uiElements.waveText.setText(waveInfo);
     }
     
     updateSurvivalTime() {
@@ -805,7 +933,7 @@ class GameScene extends Phaser.Scene {
         if (this.gamePaused) {
             // 게임 일시정지
             this.physics.pause();
-            this.pauseMenu.setVisible(true);
+            this.uiElements.pauseMenu.setVisible(true);
             
             // 타이머 일시정지
             if (this.survivalTimer) {
@@ -814,7 +942,7 @@ class GameScene extends Phaser.Scene {
         } else {
             // 게임 재개
             this.physics.resume();
-            this.pauseMenu.setVisible(false);
+            this.uiElements.pauseMenu.setVisible(false);
             
             // 타이머 재개
             if (this.survivalTimer) {
@@ -842,7 +970,7 @@ class GameScene extends Phaser.Scene {
         const levelInfo = this.levelSystem.getCurrentLevelInfo();
         
         // 결과 텍스트 업데이트
-        this.gameOverStats.setText(
+        this.uiElements.gameOverStats.setText(
             `생존 시간: ${this.formatTime(this.survivalTime)}\n` +
             `최대 웨이브: ${waveInfo.wave}\n` +
             `처치한 적: ${waveInfo.enemiesKilled}\n` +
@@ -850,7 +978,7 @@ class GameScene extends Phaser.Scene {
         );
         
         // 게임 오버 화면 표시
-        this.gameOverScreen.setVisible(true);
+        this.uiElements.gameOverScreen.setVisible(true);
         
         // 게임 오버 효과음
         try {
@@ -865,13 +993,13 @@ class GameScene extends Phaser.Scene {
             this.logDebug('게임 재시작 시도');
             
             // 게임 오버 화면 숨기기
-            if (this.gameOverScreen) {
-                this.gameOverScreen.setVisible(false);
+            if (this.uiElements.gameOverScreen) {
+                this.uiElements.gameOverScreen.setVisible(false);
             }
             
             // 일시정지 메뉴 숨기기
-            if (this.pauseMenu) {
-                this.pauseMenu.setVisible(false);
+            if (this.uiElements.pauseMenu) {
+                this.uiElements.pauseMenu.setVisible(false);
             }
             
             // 게임 상태 초기화
@@ -910,13 +1038,13 @@ class GameScene extends Phaser.Scene {
             this.logDebug('메인 메뉴로 돌아가기 시도');
             
             // 게임 오버 화면 숨기기
-            if (this.gameOverScreen) {
-                this.gameOverScreen.setVisible(false);
+            if (this.uiElements.gameOverScreen) {
+                this.uiElements.gameOverScreen.setVisible(false);
             }
             
             // 일시정지 메뉴 숨기기
-            if (this.pauseMenu) {
-                this.pauseMenu.setVisible(false);
+            if (this.uiElements.pauseMenu) {
+                this.uiElements.pauseMenu.setVisible(false);
             }
             
             // 게임 상태 초기화
@@ -1057,6 +1185,130 @@ class GameScene extends Phaser.Scene {
     onSpiritUpgraded() {
         // 성취 시스템 업데이트
         this.achievementSystem.updateAchievements('spiritUpgraded');
+    }
+
+    // 화면 크기 변경 처리
+    handleResize(gameSize) {
+        if (!this.uiElements) return;
+        
+        const width = gameSize.width || this.cameras.main.width;
+        const height = gameSize.height || this.cameras.main.height;
+        
+        // 배경 크기 조정
+        if (this.background) {
+            this.background.setSize(width, height);
+        }
+        
+        // 게임 UI 위치 조정
+        if (this.uiElements.gameUI) {
+            const padding = window.getScaledValue(20);
+            const barWidth = window.getScaledValue(200);
+            const barHeight = window.getScaledValue(20);
+            const pauseButtonSize = window.getScaledValue(40);
+            const pauseIconSize = window.getScaledValue(15);
+            
+            // 체력 바 위치 조정
+            if (this.uiElements.healthBarBg) {
+                this.uiElements.healthBarBg.setPosition(padding + barWidth / 2, padding + barHeight / 2);
+                this.uiElements.healthBarBg.setSize(barWidth, barHeight);
+            }
+            
+            if (this.uiElements.healthBar) {
+                this.uiElements.healthBar.setPosition(padding, padding + barHeight / 2);
+                this.updateHealthBar(); // 체력 바 너비 업데이트
+            }
+            
+            if (this.uiElements.healthText) {
+                this.uiElements.healthText.setPosition(padding + barWidth / 2, padding + barHeight / 2);
+                this.uiElements.healthText.setFontSize(window.getScaledFontSize(14));
+            }
+            
+            // 웨이브 정보 위치 조정
+            if (this.uiElements.waveText) {
+                this.uiElements.waveText.setPosition(width - padding, padding);
+                this.uiElements.waveText.setFontSize(window.getScaledFontSize(16));
+            }
+            
+            // 일시정지 버튼 위치 조정
+            if (this.uiElements.pauseButton) {
+                this.uiElements.pauseButton.setPosition(
+                    width - padding - pauseButtonSize / 2,
+                    padding * 2 + pauseButtonSize / 2
+                );
+                this.uiElements.pauseButton.setSize(pauseButtonSize, pauseButtonSize);
+            }
+            
+            if (this.uiElements.pauseIcon) {
+                this.uiElements.pauseIcon.setPosition(
+                    width - padding - pauseButtonSize / 2,
+                    padding * 2 + pauseButtonSize / 2
+                );
+                this.uiElements.pauseIcon.setSize(pauseIconSize, pauseIconSize * 1.3);
+            }
+            
+            // 모바일 조이스틱 위치 조정
+            if (window.gameSettings.isMobile && this.uiElements.joystickBg) {
+                const joystickRadius = window.getScaledValue(80);
+                const joystickX = joystickRadius + window.getScaledValue(30);
+                const joystickY = height - joystickRadius - window.getScaledValue(30);
+                
+                this.uiElements.joystickBg.setPosition(joystickX, joystickY);
+                this.uiElements.joystickBg.setRadius(joystickRadius);
+                
+                this.uiElements.joystickHandle.setPosition(joystickX, joystickY);
+                this.uiElements.joystickHandle.setRadius(joystickRadius / 2);
+                
+                // 조이스틱 상태 업데이트
+                this.joystick.center.x = joystickX;
+                this.joystick.center.y = joystickY;
+                this.joystick.position.x = joystickX;
+                this.joystick.position.y = joystickY;
+                this.joystick.radius = joystickRadius;
+            }
+        }
+        
+        // 일시정지 메뉴 위치 조정
+        if (this.uiElements.pauseMenu) {
+            const panelWidth = window.getScaledValue(400);
+            const panelHeight = window.getScaledValue(300);
+            const buttonWidth = window.getScaledValue(300);
+            const buttonHeight = window.getScaledValue(60);
+            
+            if (this.uiElements.pauseMenuBg) {
+                this.uiElements.pauseMenuBg.setPosition(width / 2, height / 2);
+                this.uiElements.pauseMenuBg.setSize(panelWidth, panelHeight);
+            }
+            
+            if (this.uiElements.pauseMenuTitle) {
+                this.uiElements.pauseMenuTitle.setPosition(width / 2, height / 2 - window.getScaledValue(100));
+                this.uiElements.pauseMenuTitle.setFontSize(window.getScaledFontSize(32));
+            }
+            
+            if (this.uiElements.resumeButton) {
+                this.uiElements.resumeButton.setPosition(width / 2, height / 2 - window.getScaledValue(20));
+                this.uiElements.resumeButton.setSize(buttonWidth, buttonHeight);
+            }
+            
+            if (this.uiElements.resumeText) {
+                this.uiElements.resumeText.setPosition(width / 2, height / 2 - window.getScaledValue(20));
+                this.uiElements.resumeText.setFontSize(window.getScaledFontSize(28));
+            }
+            
+            if (this.uiElements.mainMenuButton) {
+                this.uiElements.mainMenuButton.setPosition(width / 2, height / 2 + window.getScaledValue(50));
+                this.uiElements.mainMenuButton.setSize(buttonWidth, buttonHeight);
+            }
+            
+            if (this.uiElements.mainMenuText) {
+                this.uiElements.mainMenuText.setPosition(width / 2, height / 2 + window.getScaledValue(50));
+                this.uiElements.mainMenuText.setFontSize(window.getScaledFontSize(28));
+            }
+        }
+        
+        // 게임 오버 화면 위치 조정
+        if (this.uiElements.gameOverScreen) {
+            // 게임 오버 화면 요소들의 위치 조정 코드 추가
+        }
     }
 }
 
