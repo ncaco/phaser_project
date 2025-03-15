@@ -45,7 +45,15 @@ module.exports = {
       }
     ],
     hot: true,
-    port: 8080,
+    port: 8081,
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+      logging: 'error',
+    },
+    open: true,
   },
   plugins: plugins,
   resolve: {

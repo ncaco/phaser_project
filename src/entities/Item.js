@@ -143,26 +143,26 @@ class Item extends Phaser.Physics.Arcade.Sprite {
                 
             case 'uncommon':
                 this.setScale(0.9);
-                // 약간의 빛남 효과
-                this.preFX.addGlow(0xffffff, 0.5);
+                // 약간의 빛남 효과 (대체 구현)
+                this.createGlowEffect(0.5);
                 break;
                 
             case 'rare':
                 this.setScale(1.0);
-                // 빛남 효과
-                this.preFX.addGlow(0xffffff, 1);
+                // 빛남 효과 (대체 구현)
+                this.createGlowEffect(1.0);
                 break;
                 
             case 'epic':
                 this.setScale(1.1);
-                // 강한 빛남 효과
-                this.preFX.addGlow(0xffffff, 1.5);
+                // 강한 빛남 효과 (대체 구현)
+                this.createGlowEffect(1.5);
                 break;
                 
             case 'legendary':
                 this.setScale(1.2);
-                // 매우 강한 빛남 효과 + 회전
-                this.preFX.addGlow(0xffffff, 2);
+                // 매우 강한 빛남 효과 + 회전 (대체 구현)
+                this.createGlowEffect(2.0);
                 
                 // 회전 효과
                 this.scene.tweens.add({
@@ -172,6 +172,52 @@ class Item extends Phaser.Physics.Arcade.Sprite {
                     repeat: -1
                 });
                 break;
+        }
+    }
+    
+    // 빛남 효과를 대체하는 메서드
+    createGlowEffect(intensity) {
+        try {
+            // 이전에 생성된 빛남 효과가 있으면 제거
+            if (this.glowCircle && this.glowCircle.active) {
+                this.glowCircle.destroy();
+            }
+            
+            // 빛남 효과를 위한 배경 원 생성
+            const glowColor = this.tintTopLeft || 0xffffff; // 아이템의 현재 색상 사용 (기본값 추가)
+            const glowSize = this.width * (1 + intensity * 0.3); // 강도에 따라 크기 조정
+            
+            // 빛남 효과용 원 생성
+            this.glowCircle = this.scene.add.circle(
+                this.x,
+                this.y,
+                glowSize / 2,
+                glowColor,
+                0.3 * intensity // 강도에 따른 투명도
+            );
+            
+            if (this.glowCircle) {
+                this.glowCircle.setDepth(this.depth - 1); // 아이템 뒤에 표시
+                
+                // 원 크기 변화 애니메이션
+                this.scene.tweens.add({
+                    targets: this.glowCircle,
+                    scaleX: 1.2,
+                    scaleY: 1.2,
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: -1
+                });
+                
+                // 아이템 위치 업데이트 시 원도 함께 이동하도록 설정
+                this.on('destroy', () => {
+                    if (this.glowCircle && this.glowCircle.active) {
+                        this.glowCircle.destroy();
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('빛남 효과 생성 중 오류 발생:', error);
         }
     }
     
@@ -226,6 +272,17 @@ class Item extends Phaser.Physics.Arcade.Sprite {
                     Math.cos(angle) * speed,
                     Math.sin(angle) * speed
                 );
+            }
+        }
+        
+        // 아이템 위치가 변경되면 빛남 효과도 함께 이동
+        if (this.glowCircle && this.glowCircle.active) {
+            try {
+                this.glowCircle.setPosition(this.x, this.y);
+            } catch (error) {
+                console.error('빛남 효과 위치 업데이트 중 오류 발생:', error);
+                // 오류 발생 시 glowCircle 참조 제거
+                this.glowCircle = null;
             }
         }
     }

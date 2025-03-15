@@ -741,6 +741,11 @@ class GameScene extends Phaser.Scene {
             this.uiElements.gameOverMenuButton,
             this.uiElements.gameOverMenuText
         ]);
+        
+        // 모든 요소의 초기 알파값 설정 (애니메이션을 위해)
+        this.uiElements.gameOverScreen.each(child => {
+            child.setAlpha(1); // 초기 알파값을 1로 설정
+        });
     }
     
     setupInput() {
@@ -968,56 +973,91 @@ class GameScene extends Phaser.Scene {
     }
     
     showGameOver() {
-        // 이미 게임 오버 상태면 중복 실행 방지
-        if (this.gameOver) return;
-        
-        // 게임 오버 상태로 설정
-        this.gameOver = true;
-        
-        // 게임 일시정지
-        this.physics.pause();
-        
-        // 타이머 정지
-        if (this.survivalTimer) {
-            this.survivalTimer.remove();
-        }
-        
-        // 적 스포너 정지
-        if (this.enemySpawner) {
-            this.enemySpawner.stop();
-        }
-        
-        // 게임 결과 통계
-        const waveInfo = this.enemySpawner.getCurrentWaveInfo();
-        const levelInfo = this.levelSystem.getCurrentLevelInfo();
-        
-        // 결과 텍스트 업데이트
-        this.uiElements.gameOverStats.setText(
-            `생존 시간: ${this.formatTime(this.survivalTime)}\n` +
-            `최대 웨이브: ${waveInfo.wave}\n` +
-            `처치한 적: ${waveInfo.enemiesKilled}\n` +
-            `플레이어 레벨: ${levelInfo.level}`
-        );
-        
-        // 게임 오버 화면 표시 (플레이어 사망 애니메이션 후)
-        this.time.delayedCall(1500, () => {
-            this.uiElements.gameOverScreen.setVisible(true);
-            
-            // 게임 오버 화면 등장 애니메이션
-            this.tweens.add({
-                targets: this.uiElements.gameOverScreen.getAll(),
-                alpha: { from: 0, to: 1 },
-                scale: { from: 0.8, to: 1 },
-                duration: 500,
-                ease: 'Back.easeOut'
-            });
-        });
-        
-        // 게임 오버 효과음
         try {
-            this.sound.play('game_over');
+            this.logDebug('게임 오버 화면 표시');
+            
+            // 게임 오버 상태 설정
+            this.gameOver = true;
+            
+            // 물리 엔진 일시 정지
+            this.physics.pause();
+            
+            // 적 스포너 정지
+            if (this.enemySpawner) {
+                this.enemySpawner.stop();
+            }
+            
+            // 타이머 정지
+            if (this.survivalTimer) {
+                this.survivalTimer.remove();
+            }
+            
+            // 생존 시간 계산
+            const survivalTimeInSeconds = this.survivalTime || 0;
+            const minutes = Math.floor(survivalTimeInSeconds / 60);
+            const seconds = survivalTimeInSeconds % 60;
+            const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // 게임 오버 통계 업데이트
+            if (this.uiElements && this.uiElements.gameOverStats) {
+                let statsText = `생존 시간: ${formattedTime}\n`;
+                
+                // 플레이어 정보가 있는 경우에만 추가
+                if (this.player) {
+                    const waveInfo = this.enemySpawner ? this.enemySpawner.currentWave : 1;
+                    const killCount = this.enemySpawner ? this.enemySpawner.enemiesKilled : 0;
+                    
+                    statsText += `최대 웨이브: ${waveInfo}\n`;
+                    statsText += `처치한 적: ${killCount}\n`;
+                    statsText += `플레이어 레벨: ${this.player.level || 1}`;
+                } else {
+                    statsText += `최대 웨이브: 1\n`;
+                    statsText += `처치한 적: 0\n`;
+                    statsText += `플레이어 레벨: 1`;
+                }
+                
+                this.uiElements.gameOverStats.setText(statsText);
+            }
+            
+            // 게임 오버 화면 표시 (플레이어 사망 애니메이션 후)
+            this.time.delayedCall(1000, () => {
+                if (this.uiElements && this.uiElements.gameOverScreen) {
+                    // 게임 오버 화면 표시 전에 모든 요소 초기화
+                    this.uiElements.gameOverScreen.each(child => {
+                        child.setAlpha(0);
+                        child.setScale(0.8);
+                    });
+                    
+                    this.uiElements.gameOverScreen.setVisible(true);
+                    
+                    // 게임 오버 화면 등장 애니메이션
+                    this.tweens.add({
+                        targets: this.uiElements.gameOverScreen.getAll(),
+                        alpha: 1,
+                        scale: 1,
+                        duration: 500,
+                        ease: 'Back.easeOut',
+                        onComplete: () => {
+                            // 버튼 상호작용 활성화
+                            if (this.uiElements.restartButton) {
+                                this.uiElements.restartButton.setInteractive({ useHandCursor: true });
+                            }
+                            if (this.uiElements.gameOverMenuButton) {
+                                this.uiElements.gameOverMenuButton.setInteractive({ useHandCursor: true });
+                            }
+                        }
+                    });
+                }
+            });
+            
+            // 게임 오버 효과음
+            try {
+                this.sound.play('game_over');
+            } catch (error) {
+                console.error('게임 오버 효과음 재생 중 오류:', error);
+            }
         } catch (error) {
-            console.error('게임 오버 효과음 재생 중 오류:', error);
+            console.error('게임 오버 화면 표시 중 오류:', error);
         }
     }
     
@@ -1026,12 +1066,12 @@ class GameScene extends Phaser.Scene {
             this.logDebug('게임 재시작 시도');
             
             // 게임 오버 화면 숨기기
-            if (this.uiElements.gameOverScreen) {
+            if (this.uiElements && this.uiElements.gameOverScreen) {
                 this.uiElements.gameOverScreen.setVisible(false);
             }
             
             // 일시정지 메뉴 숨기기
-            if (this.uiElements.pauseMenu) {
+            if (this.uiElements && this.uiElements.pauseMenu) {
                 this.uiElements.pauseMenu.setVisible(false);
             }
             
@@ -1056,13 +1096,13 @@ class GameScene extends Phaser.Scene {
             
             // 씬 재시작
             this.logDebug('GameScene 재시작');
-            this.scene.restart();
+            this.scene.restart({ difficulty: this.difficulty });
         } catch (error) {
             console.error('게임 재시작 중 오류:', error);
             this.logDebug('게임 재시작 오류: ' + error.message);
             
             // 오류가 발생해도 씬 재시작 시도
-            this.scene.restart();
+            this.scene.restart({ difficulty: this.difficulty });
         }
     }
     
@@ -1071,12 +1111,12 @@ class GameScene extends Phaser.Scene {
             this.logDebug('메인 메뉴로 돌아가기 시도');
             
             // 게임 오버 화면 숨기기
-            if (this.uiElements.gameOverScreen) {
+            if (this.uiElements && this.uiElements.gameOverScreen) {
                 this.uiElements.gameOverScreen.setVisible(false);
             }
             
             // 일시정지 메뉴 숨기기
-            if (this.uiElements.pauseMenu) {
+            if (this.uiElements && this.uiElements.pauseMenu) {
                 this.uiElements.pauseMenu.setVisible(false);
             }
             

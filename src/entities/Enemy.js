@@ -200,9 +200,9 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         const targetVelocityX = Math.cos(angle) * this.speed;
         const targetVelocityY = Math.sin(angle) * this.speed;
         
-        // 현재 속도에서 목표 속도로 부드럽게 전환
-        this.body.velocity.x += (targetVelocityX - this.body.velocity.x) * 0.1;
-        this.body.velocity.y += (targetVelocityY - this.body.velocity.y) * 0.1;
+        // 현재 속도에서 목표 속도로 부드럽게 전환 (Linear 보간 사용)
+        this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, targetVelocityX, 0.1);
+        this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, targetVelocityY, 0.1);
         
         // 스프라이트 방향 설정
         if (this.body.velocity.x < 0) {
@@ -234,13 +234,15 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         
         // 목표 지점으로 이동
         const moveAngle = Phaser.Math.Angle.Between(this.x, this.y, targetX, targetY);
-        const velocityX = Math.cos(moveAngle) * this.speed;
-        const velocityY = Math.sin(moveAngle) * this.speed;
+        const targetVelocityX = Math.cos(moveAngle) * this.speed;
+        const targetVelocityY = Math.sin(moveAngle) * this.speed;
         
-        this.setVelocity(velocityX, velocityY);
+        // 부드러운 이동을 위한 보간
+        this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, targetVelocityX, 0.1);
+        this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, targetVelocityY, 0.1);
         
         // 스프라이트 방향 설정
-        if (velocityX < 0) {
+        if (this.body.velocity.x < 0) {
             this.setFlipX(true);
         } else {
             this.setFlipX(false);
@@ -255,13 +257,15 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
         
         // 플레이어 반대 방향으로 이동
-        const velocityX = Math.cos(angle) * -this.speed;
-        const velocityY = Math.sin(angle) * -this.speed;
+        const targetVelocityX = Math.cos(angle) * -this.speed;
+        const targetVelocityY = Math.sin(angle) * -this.speed;
         
-        this.setVelocity(velocityX, velocityY);
+        // 부드러운 이동을 위한 보간
+        this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, targetVelocityX, 0.1);
+        this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, targetVelocityY, 0.1);
         
         // 스프라이트 방향 설정
-        if (velocityX < 0) {
+        if (this.body.velocity.x < 0) {
             this.setFlipX(true);
         } else {
             this.setFlipX(false);
@@ -286,17 +290,19 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         const perpAngle = angle + Math.PI / 2;
         
         // 기본 속도 계산
-        let velocityX = Math.cos(angle) * this.speed;
-        let velocityY = Math.sin(angle) * this.speed;
+        let targetVelocityX = Math.cos(angle) * this.speed;
+        let targetVelocityY = Math.sin(angle) * this.speed;
         
         // 지그재그 오프셋 추가
-        velocityX += Math.cos(perpAngle) * zigzagOffset;
-        velocityY += Math.sin(perpAngle) * zigzagOffset;
+        targetVelocityX += Math.cos(perpAngle) * zigzagOffset;
+        targetVelocityY += Math.sin(perpAngle) * zigzagOffset;
         
-        this.setVelocity(velocityX, velocityY);
+        // 부드러운 이동을 위한 보간
+        this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, targetVelocityX, 0.1);
+        this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, targetVelocityY, 0.1);
         
         // 스프라이트 방향 설정
-        if (velocityX < 0) {
+        if (this.body.velocity.x < 0) {
             this.setFlipX(true);
         } else {
             this.setFlipX(false);

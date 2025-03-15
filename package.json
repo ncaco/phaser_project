@@ -4,7 +4,7 @@
   "description": "정령 키우기 게임 - 뱀파이어 서바이벌 스타일",
   "main": "index.html",
   "scripts": {
-    "start": "webpack serve --mode development",
+    "start": "webpack serve --mode development --port 8081",
     "build": "webpack --mode production",
     "serve": "http-server -c-1"
   },

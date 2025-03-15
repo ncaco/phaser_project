@@ -11,11 +11,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         // 물리 속성 설정
         this.setCollideWorldBounds(true);
         this.body.setDamping(true);
-        this.body.setDrag(0.85, 0.85); // 마찰력 더 증가 (0.9 -> 0.85)
+        this.body.setDrag(0.92, 0.92); // 마찰력 조정 (0.85 -> 0.92)
         
         // 플레이어 속성
-        this.speed = 120; // 속도 더 감소 (180 -> 120)
-        this.acceleration = 1000; // 가속도 더 감소 (1500 -> 1000)
+        this.speed = 150; // 속도 조정 (120 -> 150)
+        this.maxSpeed = 150; // 최대 속도 제한 추가
+        this.acceleration = 800; // 가속도 조정 (1000 -> 800)
         this.health = 100;
         this.maxHealth = 100;
         this.invulnerable = false;
@@ -114,6 +115,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     handleMovement(delta) {
+        // 사망 상태면 이동 불가
+        if (this.isDead) {
+            this.body.setVelocity(0, 0);
+            return;
+        }
+        
         // 조이스틱 입력이 있는 경우 (모바일)
         if (this.scene.joystick && this.scene.joystick.isActive) {
             const joyX = this.scene.joystick.direction.x;
@@ -122,10 +129,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             if (Math.abs(joyX) > 0.1 || Math.abs(joyY) > 0.1) {
                 // 조이스틱 입력 강도에 따른 속도 조절
                 const intensity = Math.min(1, Math.sqrt(joyX * joyX + joyY * joyY));
-                this.setVelocity(
-                    joyX * this.speed * intensity,
-                    joyY * this.speed * intensity
-                );
+                const velocityX = joyX * this.speed * intensity;
+                const velocityY = joyY * this.speed * intensity;
+                
+                // 속도 설정 (부드러운 전환)
+                this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, velocityX, 0.2);
+                this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, velocityY, 0.2);
                 
                 // 이동 방향에 따라 스프라이트 방향 설정
                 if (joyX < 0) {
@@ -138,11 +147,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             }
         }
         
-        // 키보드 입력 처리 - 직접 키 상태 사용
+        // 키보드 입력 처리
         let dirX = 0;
         let dirY = 0;
         
-        // 직접 키 상태 확인
+        // 키 상태 확인
         if (this.keys.left) dirX -= 1;
         if (this.keys.right) dirX += 1;
         if (this.keys.up) dirY -= 1;
@@ -159,7 +168,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             }
         }
         
-        // 방향 벡터 정규화
+        // 입력이 있는 경우 이동 처리
         if (dirX !== 0 || dirY !== 0) {
             // 대각선 이동 시 정규화
             if (dirX !== 0 && dirY !== 0) {
@@ -168,16 +177,21 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 dirY /= length;
             }
             
-            // 가속도 기반 이동 (더 부드러운 이동)
+            // 목표 속도 계산
             const targetVelX = dirX * this.speed;
             const targetVelY = dirY * this.speed;
             
-            // 현재 속도에서 목표 속도로 부드럽게 전환
-            const deltaSeconds = delta / 1000;
-            const accelFactor = this.acceleration * deltaSeconds;
+            // 현재 속도에서 목표 속도로 부드럽게 전환 (단순화된 방식)
+            this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, targetVelX, 0.3);
+            this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, targetVelY, 0.3);
             
-            this.body.velocity.x += (targetVelX - this.body.velocity.x) * accelFactor;
-            this.body.velocity.y += (targetVelY - this.body.velocity.y) * accelFactor;
+            // 최대 속도 제한
+            const currentSpeed = Math.sqrt(this.body.velocity.x * this.body.velocity.x + this.body.velocity.y * this.body.velocity.y);
+            if (currentSpeed > this.maxSpeed) {
+                const ratio = this.maxSpeed / currentSpeed;
+                this.body.velocity.x *= ratio;
+                this.body.velocity.y *= ratio;
+            }
             
             // 이동 방향에 따라 스프라이트 방향 설정
             if (dirX < 0) {
@@ -185,6 +199,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             } else if (dirX > 0) {
                 this.flipX = false;
             }
+        } else {
+            // 입력이 없는 경우 점진적으로 속도 감소
+            this.body.velocity.x = Phaser.Math.Linear(this.body.velocity.x, 0, 0.2);
+            this.body.velocity.y = Phaser.Math.Linear(this.body.velocity.y, 0, 0.2);
         }
     }
     
@@ -317,6 +335,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         this.isDead = true;
         this.body.setVelocity(0, 0);
+        
+        // 모든 정령 제거
+        this.spirits.forEach(spirit => {
+            if (spirit && spirit.active) {
+                spirit.destroy();
+            }
+        });
+        this.spirits = [];
         
         // 사망 애니메이션
         this.scene.tweens.add({
