@@ -202,8 +202,10 @@ class GameScene extends Phaser.Scene {
     
     setupCamera() {
         // 카메라 설정
-        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+        this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
         this.cameras.main.setZoom(1);
+        this.cameras.main.setLerp(0.05, 0.05); // 부드러운 카메라 이동
+        this.cameras.main.setDeadzone(50, 50); // 데드존 추가
     }
     
     createUI() {
@@ -386,6 +388,11 @@ class GameScene extends Phaser.Scene {
             isActive: false,
             direction: { x: 0, y: 0 }
         };
+        
+        // 플레이어에게 조이스틱 참조 전달
+        if (this.player) {
+            this.player.scene.joystick = this.joystick;
+        }
         
         // 조이스틱 이벤트 설정
         this.input.on('pointerdown', (pointer) => {
@@ -737,6 +744,11 @@ class GameScene extends Phaser.Scene {
         // 커서 키 설정
         this.cursors = this.input.keyboard.createCursorKeys();
         
+        // 플레이어 객체에 커서 참조 전달
+        if (this.player) {
+            this.player.scene.cursors = this.cursors;
+        }
+        
         // ESC 키로 일시정지 토글
         this.input.keyboard.on('keydown-ESC', () => {
             this.togglePause();
@@ -766,14 +778,6 @@ class GameScene extends Phaser.Scene {
         
         // 플레이어 업데이트
         if (this.player) {
-            // 모바일 환경에서 조이스틱 입력 처리
-            if (window.gameSettings.isMobile && this.joystick && this.joystick.isActive) {
-                this.player.setVelocity(
-                    this.joystick.direction.x * this.player.speed,
-                    this.joystick.direction.y * this.player.speed
-                );
-            }
-            
             this.player.update(time, delta);
         }
         
@@ -782,11 +786,16 @@ class GameScene extends Phaser.Scene {
             enemy.update(time, delta);
         });
         
-        // 배경 스크롤 효과
+        // 배경 스크롤 효과 - 부드럽게 조정
         if (this.player && this.background) {
-            this.background.tilePositionX += this.player.body.velocity.x * 0.01;
-            this.background.tilePositionY += this.player.body.velocity.y * 0.01;
+            // 플레이어 속도에 따른 배경 스크롤 속도 감소
+            const scrollFactor = 0.005; // 스크롤 속도 감소 (0.01 -> 0.005)
+            this.background.tilePositionX += this.player.body.velocity.x * scrollFactor;
+            this.background.tilePositionY += this.player.body.velocity.y * scrollFactor;
         }
+        
+        // 바닥 타일 업데이트
+        this.updateBackgroundTiles();
         
         // UI 업데이트
         this.updateHealthBar();
@@ -854,7 +863,7 @@ class GameScene extends Phaser.Scene {
             bottom: playerY + this.cameras.main.height / 2 + tileSize
         };
         
-        // 타일 재배치
+        // 타일 재배치 - 부드럽게 처리
         this.groundTiles.forEach(tile => {
             // 타일이 화면 밖으로 나갔는지 확인
             if (tile.x < cameraBounds.left || 
@@ -862,20 +871,24 @@ class GameScene extends Phaser.Scene {
                 tile.y < cameraBounds.top || 
                 tile.y > cameraBounds.bottom) {
                 
-                // 새 위치 계산
+                // 새 위치 계산 - 타일 크기의 배수로 이동하여 정확히 배치
                 let newX = tile.x;
                 let newY = tile.y;
                 
                 if (tile.x < cameraBounds.left) {
-                    newX += tileSize * Math.ceil((cameraBounds.right - tile.x) / tileSize);
+                    const tilesX = Math.ceil((cameraBounds.right - cameraBounds.left) / tileSize);
+                    newX += tileSize * tilesX;
                 } else if (tile.x > cameraBounds.right) {
-                    newX -= tileSize * Math.ceil((tile.x - cameraBounds.left) / tileSize);
+                    const tilesX = Math.ceil((cameraBounds.right - cameraBounds.left) / tileSize);
+                    newX -= tileSize * tilesX;
                 }
                 
                 if (tile.y < cameraBounds.top) {
-                    newY += tileSize * Math.ceil((cameraBounds.bottom - tile.y) / tileSize);
+                    const tilesY = Math.ceil((cameraBounds.bottom - cameraBounds.top) / tileSize);
+                    newY += tileSize * tilesY;
                 } else if (tile.y > cameraBounds.bottom) {
-                    newY -= tileSize * Math.ceil((tile.y - cameraBounds.top) / tileSize);
+                    const tilesY = Math.ceil((cameraBounds.bottom - cameraBounds.top) / tileSize);
+                    newY -= tileSize * tilesY;
                 }
                 
                 // 타일 위치 업데이트
