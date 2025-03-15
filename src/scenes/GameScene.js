@@ -19,6 +19,14 @@ class GameScene extends Phaser.Scene {
             this.difficulty = data.difficulty;
             this.logDebug(`게임 난이도 설정: ${this.difficulty}`);
         }
+        
+        // MainMenuScene에서 전달받은 속성 설정
+        if (data && data.element) {
+            this.playerElement = data.element;
+            this.logDebug(`플레이어 속성 설정: ${this.playerElement}`);
+        } else {
+            this.playerElement = 'fire'; // 기본 속성
+        }
     }
 
     create() {
@@ -111,7 +119,8 @@ class GameScene extends Phaser.Scene {
         this.player = new Player(
             this,
             this.cameras.main.centerX,
-            this.cameras.main.centerY
+            this.cameras.main.centerY,
+            this.playerElement // 선택한 속성 전달
         );
         
         // 플레이어 초기 정령 추가
@@ -1147,7 +1156,13 @@ class GameScene extends Phaser.Scene {
             this.logDebug('메인 메뉴로 돌아가기 오류: ' + error.message);
             
             // 오류가 발생해도 메인 메뉴로 이동 시도
-            this.scene.start('MainMenuScene');
+            try {
+                this.scene.start('MainMenuScene');
+            } catch (e) {
+                console.error('메인 메뉴 전환 2차 오류:', e);
+                // 최후의 수단으로 씬 재시작
+                window.location.reload();
+            }
         }
     }
 

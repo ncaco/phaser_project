@@ -269,39 +269,52 @@ class EnemySpawner {
     }
     
     completeWave() {
-        // 이미 완료된 웨이브면 리턴
-        if (this.waveCompleted) return;
-        
-        // 웨이브 완료 설정
-        this.waveCompleted = true;
-        
-        // 웨이브 완료 메시지
-        this.showWaveMessage(`웨이브 ${this.currentWave} 완료!`);
-        
-        // 웨이브 쿨다운 설정
-        this.waveCooldown = true;
-        
-        // 다음 웨이브 준비
-        this.scene.time.delayedCall(5000, () => {
-            this.currentWave++;
-            this.enemiesSpawned = 0;
-            this.enemiesKilled = 0;
-            this.waveCompleted = false;
-            this.waveCooldown = false;
+        try {
+            // 이미 완료된 웨이브면 리턴
+            if (this.waveCompleted) return;
             
-            // 웨이브에 따른 난이도 조정
-            this.adjustDifficultyByWave();
+            // 씬이 활성화되어 있는지 확인
+            if (!this.scene || !this.scene.active) {
+                return;
+            }
             
-            // 다음 웨이브 시작 메시지
-            this.showWaveMessage(`웨이브 ${this.currentWave} 시작!`);
+            // 웨이브 완료 설정
+            this.waveCompleted = true;
             
-            // 보스 웨이브 알림
-            if (this.currentWave % this.bossWaveInterval === 0) {
-                this.scene.time.delayedCall(1000, () => {
-                    this.showWaveMessage('보스 웨이브!', 0xff00ff);
+            // 웨이브 완료 메시지
+            this.showWaveMessage(`웨이브 ${this.currentWave} 완료!`);
+            
+            // 웨이브 쿨다운 설정
+            this.waveCooldown = true;
+            
+            // 다음 웨이브 준비
+            if (this.scene && this.scene.time) {
+                this.scene.time.delayedCall(5000, () => {
+                    this.currentWave++;
+                    this.enemiesSpawned = 0;
+                    this.enemiesKilled = 0;
+                    this.waveCompleted = false;
+                    this.waveCooldown = false;
+                    
+                    // 웨이브에 따른 난이도 조정
+                    this.adjustDifficultyByWave();
+                    
+                    // 다음 웨이브 시작 메시지
+                    this.showWaveMessage(`웨이브 ${this.currentWave} 시작!`);
+                    
+                    // 보스 웨이브 알림
+                    if (this.currentWave % this.bossWaveInterval === 0) {
+                        if (this.scene && this.scene.time) {
+                            this.scene.time.delayedCall(1000, () => {
+                                this.showWaveMessage('보스 웨이브!', 0xff00ff);
+                            });
+                        }
+                    }
                 });
             }
-        });
+        } catch (error) {
+            console.error('웨이브 완료 처리 중 오류:', error);
+        }
     }
     
     adjustDifficultyByWave() {
@@ -374,45 +387,73 @@ class EnemySpawner {
     }
     
     showWaveMessage(message, color = 0xffffff) {
-        // 웨이브 메시지 표시
-        const text = this.scene.add.text(
-            this.scene.cameras.main.width / 2,
-            this.scene.cameras.main.height / 3,
-            message,
-            {
-                font: '32px Arial',
-                fill: '#ffffff',
-                stroke: '#000000',
-                strokeThickness: 4
-            }
-        ).setOrigin(0.5);
-        
-        // 텍스트 색상 설정
-        text.setTint(color);
-        
-        // 텍스트 애니메이션
-        this.scene.tweens.add({
-            targets: text,
-            y: text.y - 50,
-            alpha: 0,
-            duration: 2000,
-            ease: 'Power2',
-            onComplete: () => {
-                text.destroy();
-            }
-        });
-        
-        // 효과음 재생
         try {
+            // 씬이 활성화되어 있는지 확인
+            if (!this.scene || !this.scene.active) {
+                return;
+            }
+            
+            // 카메라가 유효한지 확인
+            if (!this.scene.cameras || !this.scene.cameras.main) {
+                return;
+            }
+            
+            // 웨이브 메시지 표시
+            const text = this.scene.add.text(
+                this.scene.cameras.main.width / 2,
+                this.scene.cameras.main.height / 3,
+                message,
+                {
+                    font: '32px Arial',
+                    fill: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 4
+                }
+            ).setOrigin(0.5);
+            
+            // 텍스트 색상 설정
+            text.setTint(color);
+            
+            // 텍스트 애니메이션
+            this.scene.tweens.add({
+                targets: text,
+                y: text.y - 50,
+                alpha: 0,
+                duration: 2000,
+                ease: 'Power2',
+                onComplete: () => {
+                    text.destroy();
+                }
+            });
+            
+            // 효과음 재생
             if (message.includes('시작')) {
-                this.scene.sound.play('wave_start');
+                try {
+                    if (this.scene.sound && this.scene.sound.play) {
+                        this.scene.sound.play('wave_start');
+                    }
+                } catch (error) {
+                    console.error('웨이브 시작 효과음 재생 중 오류:', error);
+                }
             } else if (message.includes('완료')) {
-                this.scene.sound.play('wave_complete');
+                try {
+                    if (this.scene.sound && this.scene.sound.play) {
+                        this.scene.sound.play('wave_complete');
+                    }
+                } catch (error) {
+                    console.error('웨이브 완료 효과음 재생 중 오류:', error);
+                }
             } else if (message.includes('보스')) {
-                this.scene.sound.play('boss_warning');
+                try {
+                    if (this.scene.sound && this.scene.sound.play) {
+                        this.scene.sound.play('boss_warning');
+                    }
+                } catch (error) {
+                    console.error('보스 경고 효과음 재생 중 오류:', error);
+                }
             }
         } catch (error) {
-            console.error('효과음 재생 중 오류 발생:', error);
+            console.error('웨이브 메시지 표시 중 오류:', error);
         }
     }
     
