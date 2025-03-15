@@ -10,16 +10,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 물리 속성 설정
         this.setCollideWorldBounds(true);
+        this.body.setDamping(true);
+        this.body.setDrag(0.9, 0.9); // 마찰력 증가 (0.95 -> 0.9)
         
         // 플레이어 속성
-        this.speed = 200;
+        this.speed = 180; // 속도 감소 (250 -> 180)
+        this.acceleration = 1500; // 가속도 감소 (2000 -> 1500)
         this.health = 100;
         this.maxHealth = 100;
         this.invulnerable = false;
         this.invulnerableTime = 500; // 무적 시간 (밀리초)
         
         // 대시 속성
-        this.dashSpeed = 400;
+        this.dashSpeed = 400; // 대시 속도 감소 (500 -> 400)
         this.dashDuration = 200; // 대시 지속 시간 (밀리초)
         this.dashCooldown = 2000; // 대시 쿨다운 (밀리초)
         this.canDash = true;
@@ -41,6 +44,17 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 키보드 입력 설정
         this.setupKeyboardInput();
+        
+        // 이동 속도 벡터
+        this.movementVector = { x: 0, y: 0 };
+        
+        // 키 상태 저장
+        this.keys = {
+            up: false,
+            down: false,
+            left: false,
+            right: false
+        };
     }
     
     setupAnimations() {
@@ -63,63 +77,112 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.scene.input.keyboard.on('keydown-SPACE', () => {
             this.dash();
         });
+        
+        // 직접 키 이벤트 리스너 추가
+        this.scene.input.keyboard.on('keydown-UP', () => { this.keys.up = true; });
+        this.scene.input.keyboard.on('keydown-DOWN', () => { this.keys.down = true; });
+        this.scene.input.keyboard.on('keydown-LEFT', () => { this.keys.left = true; });
+        this.scene.input.keyboard.on('keydown-RIGHT', () => { this.keys.right = true; });
+        
+        this.scene.input.keyboard.on('keyup-UP', () => { this.keys.up = false; });
+        this.scene.input.keyboard.on('keyup-DOWN', () => { this.keys.down = false; });
+        this.scene.input.keyboard.on('keyup-LEFT', () => { this.keys.left = false; });
+        this.scene.input.keyboard.on('keyup-RIGHT', () => { this.keys.right = false; });
+        
+        // WASD 키 설정
+        this.scene.input.keyboard.on('keydown-W', () => { this.keys.up = true; });
+        this.scene.input.keyboard.on('keydown-S', () => { this.keys.down = true; });
+        this.scene.input.keyboard.on('keydown-A', () => { this.keys.left = true; });
+        this.scene.input.keyboard.on('keydown-D', () => { this.keys.right = true; });
+        
+        this.scene.input.keyboard.on('keyup-W', () => { this.keys.up = false; });
+        this.scene.input.keyboard.on('keyup-S', () => { this.keys.down = false; });
+        this.scene.input.keyboard.on('keyup-A', () => { this.keys.left = false; });
+        this.scene.input.keyboard.on('keyup-D', () => { this.keys.right = false; });
     }
 
-    update(cursors) {
+    update(time, delta) {
         // 대시 중이면 이동 로직 스킵
         if (this.isDashing) return;
         
         // 이동 로직
-        this.handleMovement(cursors);
+        this.handleMovement(delta);
         
         // 정령 업데이트
         this.updateSpirits();
     }
 
-    handleMovement(cursors) {
-        // cursors가 undefined인 경우 처리
-        if (!cursors) {
-            this.setVelocity(0, 0);
-            return;
-        }
-        
-        // 수평 이동
-        if (cursors.left.isDown) {
-            this.setVelocityX(-this.speed);
-            this.flipX = true;
-        } else if (cursors.right.isDown) {
-            this.setVelocityX(this.speed);
-            this.flipX = false;
-        } else {
-            this.setVelocityX(0);
-        }
-        
-        // 수직 이동
-        if (cursors.up.isDown) {
-            this.setVelocityY(-this.speed);
-        } else if (cursors.down.isDown) {
-            this.setVelocityY(this.speed);
-        } else {
-            this.setVelocityY(0);
-        }
-        
-        // 이동 시 시각 효과
-        if (this.body.velocity.x !== 0 || this.body.velocity.y !== 0) {
-            if (!this.moveEffect) {
-                this.moveEffect = this.scene.tweens.add({
-                    targets: this,
-                    scaleX: 1.1,
-                    scaleY: 0.9,
-                    duration: 300,
-                    yoyo: true,
-                    repeat: -1
-                });
+    handleMovement(delta) {
+        // 조이스틱 입력이 있는 경우 (모바일)
+        if (this.scene.joystick && this.scene.joystick.isActive) {
+            const joyX = this.scene.joystick.direction.x;
+            const joyY = this.scene.joystick.direction.y;
+            
+            if (Math.abs(joyX) > 0.1 || Math.abs(joyY) > 0.1) {
+                // 조이스틱 입력 강도에 따른 속도 조절
+                const intensity = Math.min(1, Math.sqrt(joyX * joyX + joyY * joyY));
+                this.setVelocity(
+                    joyX * this.speed * intensity,
+                    joyY * this.speed * intensity
+                );
+                
+                // 이동 방향에 따라 스프라이트 방향 설정
+                if (joyX < 0) {
+                    this.flipX = true;
+                } else if (joyX > 0) {
+                    this.flipX = false;
+                }
+                
+                return;
             }
-        } else {
-            if (this.moveEffect) {
-                this.moveEffect.stop();
-                this.moveEffect = null;
-                this.setScale(1);
+        }
+        
+        // 키보드 입력 처리 - 직접 키 상태 사용
+        let dirX = 0;
+        let dirY = 0;
+        
+        // 직접 키 상태 확인
+        if (this.keys.left) dirX -= 1;
+        if (this.keys.right) dirX += 1;
+        if (this.keys.up) dirY -= 1;
+        if (this.keys.down) dirY += 1;
+        
+        // 키보드 입력이 없으면 Phaser의 cursors 객체 확인 (대체 방법)
+        if (dirX === 0 && dirY === 0) {
+            const cursors = this.scene.cursors;
+            if (cursors) {
+                if (cursors.left.isDown) dirX -= 1;
+                if (cursors.right.isDown) dirX += 1;
+                if (cursors.up.isDown) dirY -= 1;
+                if (cursors.down.isDown) dirY += 1;
+            }
+        }
+        
+        // 방향 벡터 정규화
+        if (dirX !== 0 || dirY !== 0) {
+            // 대각선 이동 시 정규화
+            if (dirX !== 0 && dirY !== 0) {
+                const length = Math.sqrt(dirX * dirX + dirY * dirY);
+                dirX /= length;
+                dirY /= length;
+            }
+            
+            // 가속도 기반 이동 (더 부드러운 이동)
+            const targetVelX = dirX * this.speed;
+            const targetVelY = dirY * this.speed;
+            
+            // 현재 속도에서 목표 속도로 부드럽게 전환
+            const deltaSeconds = delta / 1000;
+            const accelFactor = this.acceleration * deltaSeconds;
+            
+            this.body.velocity.x += (targetVelX - this.body.velocity.x) * accelFactor;
+            this.body.velocity.y += (targetVelY - this.body.velocity.y) * accelFactor;
+            
+            // 이동 방향에 따라 스프라이트 방향 설정
+            if (dirX < 0) {
+                this.flipX = true;
+            } else if (dirX > 0) {
+                this.flipX = false;
             }
         }
     }
