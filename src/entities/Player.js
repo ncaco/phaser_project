@@ -1,12 +1,15 @@
 const Spirit = require('./Spirit').Spirit;
 
 class Player extends Phaser.Physics.Arcade.Sprite {
-    constructor(scene, x, y) {
+    constructor(scene, x, y, element = 'fire') {
         super(scene, x, y, 'player');
         
         // 씬에 추가
         scene.add.existing(this);
         scene.physics.add.existing(this);
+        
+        // 속성 설정
+        this.element = element;
         
         // 물리 속성 설정
         this.setCollideWorldBounds(true);
@@ -38,8 +41,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         // 정령 목록
         this.spirits = [];
         
+        // 속성에 따른 설정 적용
+        this.applyElementSettings();
+        
         // 초기 정령 생성
-        this.addSpirit('기본 정령');
+        this.addSpirit(`${this.getElementName()} 정령`);
         
         // 애니메이션 설정
         this.setupAnimations();
@@ -57,6 +63,92 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             left: false,
             right: false
         };
+    }
+    
+    // 속성에 따른 설정 적용
+    applyElementSettings() {
+        switch (this.element) {
+            case 'fire':
+                this.setTint(0xff5500);
+                this.attackDamage = 15;
+                this.attackSpeed = 1200;
+                this.attackRange = 120;
+                break;
+                
+            case 'water':
+                this.setTint(0x00aaff);
+                this.attackDamage = 12;
+                this.attackSpeed = 800;
+                this.attackRange = 180;
+                break;
+                
+            case 'earth':
+                this.setTint(0xaa5500);
+                this.attackDamage = 20;
+                this.attackSpeed = 1500;
+                this.attackRange = 100;
+                break;
+                
+            case 'air':
+                this.setTint(0x00ff00);
+                this.attackDamage = 10;
+                this.attackSpeed = 500;
+                this.attackRange = 200;
+                break;
+                
+            default:
+                this.setTint(0xff5500); // 기본값은 불 속성
+                this.attackDamage = 15;
+                this.attackSpeed = 1200;
+                this.attackRange = 120;
+                break;
+        }
+        
+        // 속성 효과 생성
+        this.createElementEffect();
+    }
+    
+    // 속성 효과 생성
+    createElementEffect() {
+        // 이전 효과 제거
+        if (this.elementEffect) {
+            this.elementEffect.destroy();
+        }
+        
+        // 속성에 따른 효과 색상
+        let color;
+        switch (this.element) {
+            case 'fire': color = 0xff5500; break;
+            case 'water': color = 0x00aaff; break;
+            case 'earth': color = 0xaa5500; break;
+            case 'air': color = 0x00ff00; break;
+            default: color = 0xff5500; break;
+        }
+        
+        // 효과 생성
+        this.elementEffect = this.scene.add.circle(this.x, this.y, this.width * 0.6, color, 0.3);
+        this.elementEffect.setDepth(this.depth - 1);
+        
+        // 효과 애니메이션
+        this.scene.tweens.add({
+            targets: this.elementEffect,
+            scale: { from: 0.8, to: 1.2 },
+            alpha: { from: 0.3, to: 0.1 },
+            duration: 1500,
+            yoyo: true,
+            repeat: -1
+        });
+    }
+    
+    // 속성 이름 반환
+    getElementName() {
+        switch (this.element) {
+            case 'fire': return '불';
+            case 'water': return '물';
+            case 'earth': return '땅';
+            case 'air': return '바람';
+            default: return '불';
+        }
     }
     
     setupAnimations() {
@@ -104,14 +196,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     update(time, delta) {
-        // 대시 중이면 이동 로직 스킵
-        if (this.isDashing) return;
+        // 사망 상태면 업데이트 중지
+        if (this.isDead) return;
         
-        // 이동 로직
+        // 이동 처리
         this.handleMovement(delta);
         
         // 정령 업데이트
         this.updateSpirits();
+        
+        // 속성 효과 위치 업데이트
+        if (this.elementEffect && this.elementEffect.active) {
+            this.elementEffect.setPosition(this.x, this.y);
+        }
     }
 
     handleMovement(delta) {
@@ -471,34 +568,23 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.checkLevelUp();
     }
 
-    addSpirit(spiritName) {
-        // 새 정령 생성
-        const spirit = new Spirit(this.scene, this.x, this.y, spiritName);
+    addSpirit(name) {
+        const Spirit = require('./Spirit').Spirit;
+        
+        // 정령 생성 위치 (플레이어 주변)
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 50;
+        const x = this.x + Math.cos(angle) * distance;
+        const y = this.y + Math.sin(angle) * distance;
+        
+        // 정령 생성
+        const spirit = new Spirit(this.scene, x, y, name);
+        
+        // 정령 속성 설정
+        spirit.element = this.element;
         
         // 정령 목록에 추가
         this.spirits.push(spirit);
-        
-        // 정령 그룹에 추가
-        if (this.scene.spirits) {
-            this.scene.spirits.add(spirit);
-        }
-        
-        // 정령 추가 효과
-        const addEffect = this.scene.add.sprite(this.x, this.y, 'spirit');
-        addEffect.setScale(2);
-        
-        this.scene.tweens.add({
-            targets: addEffect,
-            scale: 0,
-            alpha: 0,
-            duration: 500,
-            onComplete: () => {
-                addEffect.destroy();
-            }
-        });
-        
-        // 정령 업데이트 이벤트 발생
-        this.scene.events.emit('spiritUpdate', this.spirits.length);
         
         return spirit;
     }
