@@ -11,15 +11,16 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         // 물리 속성 설정
         this.setCollideWorldBounds(true);
         this.body.setDamping(true);
-        this.body.setDrag(0.9, 0.9); // 마찰력 증가 (0.95 -> 0.9)
+        this.body.setDrag(0.85, 0.85); // 마찰력 더 증가 (0.9 -> 0.85)
         
         // 플레이어 속성
-        this.speed = 180; // 속도 감소 (250 -> 180)
-        this.acceleration = 1500; // 가속도 감소 (2000 -> 1500)
+        this.speed = 120; // 속도 더 감소 (180 -> 120)
+        this.acceleration = 1000; // 가속도 더 감소 (1500 -> 1000)
         this.health = 100;
         this.maxHealth = 100;
         this.invulnerable = false;
         this.invulnerableTime = 500; // 무적 시간 (밀리초)
+        this.isDead = false; // 사망 상태 추가
         
         // 대시 속성
         this.dashSpeed = 400; // 대시 속도 감소 (500 -> 400)
@@ -290,8 +291,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     takeDamage(amount) {
-        // 무적 상태면 데미지를 받지 않음
-        if (this.invulnerable) return;
+        // 무적 상태거나 이미 사망한 경우 데미지를 받지 않음
+        if (this.invulnerable || this.isDead) return;
         
         // 데미지 적용
         this.health = Math.max(0, this.health - amount);
@@ -307,7 +308,34 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 사망 체크
         if (this.health <= 0) {
-            this.scene.events.emit('playerDeath');
+            this.die();
+        }
+    }
+
+    die() {
+        if (this.isDead) return; // 이미 사망 처리된 경우 중복 실행 방지
+        
+        this.isDead = true;
+        this.body.setVelocity(0, 0);
+        
+        // 사망 애니메이션
+        this.scene.tweens.add({
+            targets: this,
+            alpha: 0,
+            scale: 0,
+            angle: 720,
+            duration: 1000,
+            onComplete: () => {
+                // 사망 이벤트 발생
+                this.scene.events.emit('playerDeath');
+            }
+        });
+        
+        // 사망 효과음 재생
+        try {
+            this.scene.sound.play('player_death');
+        } catch (error) {
+            console.error('사망 효과음 재생 중 오류:', error);
         }
     }
 

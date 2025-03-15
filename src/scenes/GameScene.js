@@ -65,6 +65,9 @@ class GameScene extends Phaser.Scene {
             // 화면 크기 변경 이벤트 리스너 등록
             this.scale.on('resize', this.handleResize, this);
             
+            // 플레이어 사망 이벤트 리스너 등록
+            this.events.on('playerDeath', this.showGameOver, this);
+            
             this.logDebug('GameScene 생성 완료');
         } catch (error) {
             console.error('GameScene 생성 중 오류 발생:', error);
@@ -501,7 +504,7 @@ class GameScene extends Phaser.Scene {
             0x4CAF50, // 녹색 계열
             0.9
         );
-        this.uiElements.resumeButton.setInteractive();
+        this.uiElements.resumeButton.setInteractive({ useHandCursor: true });
         this.uiElements.resumeButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 계속하기 텍스트
@@ -528,7 +531,7 @@ class GameScene extends Phaser.Scene {
             0x2196F3, // 파란색 계열
             0.9
         );
-        this.uiElements.mainMenuButton.setInteractive();
+        this.uiElements.mainMenuButton.setInteractive({ useHandCursor: true });
         this.uiElements.mainMenuButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 메인 메뉴 텍스트
@@ -553,7 +556,7 @@ class GameScene extends Phaser.Scene {
         
         this.uiElements.mainMenuButton.on('pointerdown', () => {
             console.log('메인 메뉴로 버튼 클릭됨 (일시정지 메뉴)');
-            this.scene.start('MainMenuScene');
+            this.returnToMainMenu();
         });
         
         // 버튼 호버 효과
@@ -647,7 +650,7 @@ class GameScene extends Phaser.Scene {
             0x4CAF50, // 녹색 계열
             0.9
         );
-        this.uiElements.restartButton.setInteractive();
+        this.uiElements.restartButton.setInteractive({ useHandCursor: true });
         this.uiElements.restartButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 다시 시작 텍스트
@@ -674,7 +677,7 @@ class GameScene extends Phaser.Scene {
             0x2196F3, // 파란색 계열
             0.9
         );
-        this.uiElements.gameOverMenuButton.setInteractive();
+        this.uiElements.gameOverMenuButton.setInteractive({ useHandCursor: true });
         this.uiElements.gameOverMenuButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 메인 메뉴 텍스트
@@ -695,12 +698,12 @@ class GameScene extends Phaser.Scene {
         // 버튼 이벤트
         this.uiElements.restartButton.on('pointerdown', () => {
             console.log('다시 시작 버튼 클릭됨');
-            this.scene.restart();
+            this.restartGame();
         });
         
         this.uiElements.gameOverMenuButton.on('pointerdown', () => {
             console.log('메인 메뉴로 버튼 클릭됨');
-            this.scene.start('MainMenuScene');
+            this.returnToMainMenu();
         });
         
         // 버튼 호버 효과
@@ -965,6 +968,12 @@ class GameScene extends Phaser.Scene {
     }
     
     showGameOver() {
+        // 이미 게임 오버 상태면 중복 실행 방지
+        if (this.gameOver) return;
+        
+        // 게임 오버 상태로 설정
+        this.gameOver = true;
+        
         // 게임 일시정지
         this.physics.pause();
         
@@ -990,8 +999,19 @@ class GameScene extends Phaser.Scene {
             `플레이어 레벨: ${levelInfo.level}`
         );
         
-        // 게임 오버 화면 표시
-        this.uiElements.gameOverScreen.setVisible(true);
+        // 게임 오버 화면 표시 (플레이어 사망 애니메이션 후)
+        this.time.delayedCall(1500, () => {
+            this.uiElements.gameOverScreen.setVisible(true);
+            
+            // 게임 오버 화면 등장 애니메이션
+            this.tweens.add({
+                targets: this.uiElements.gameOverScreen.getAll(),
+                alpha: { from: 0, to: 1 },
+                scale: { from: 0.8, to: 1 },
+                duration: 500,
+                ease: 'Back.easeOut'
+            });
+        });
         
         // 게임 오버 효과음
         try {
@@ -1138,6 +1158,7 @@ class GameScene extends Phaser.Scene {
             1
         );
         achievementButton.setScrollFactor(0);
+        this.uiElements.achievementButton = achievementButton;
         achievementButton.setDepth(100);
         achievementButton.setInteractive();
         

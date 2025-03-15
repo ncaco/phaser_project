@@ -47,7 +47,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             case 'normal':
                 this.health = 100;
                 this.maxHealth = 100;
-                this.speed = 100;
+                this.speed = 60; // 속도 감소 (100 -> 60)
                 this.damage = 10;
                 this.expValue = 10;
                 this.dropRate = 0.3;
@@ -57,7 +57,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             case 'fast':
                 this.health = 60;
                 this.maxHealth = 60;
-                this.speed = 180;
+                this.speed = 100; // 속도 감소 (180 -> 100)
                 this.damage = 5;
                 this.expValue = 15;
                 this.dropRate = 0.4;
@@ -68,7 +68,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             case 'tank':
                 this.health = 300;
                 this.maxHealth = 300;
-                this.speed = 60;
+                this.speed = 40; // 속도 감소 (60 -> 40)
                 this.damage = 20;
                 this.expValue = 30;
                 this.dropRate = 0.5;
@@ -79,7 +79,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             case 'ranged':
                 this.health = 80;
                 this.maxHealth = 80;
-                this.speed = 80;
+                this.speed = 50; // 속도 감소 (80 -> 50)
                 this.damage = 15;
                 this.expValue = 20;
                 this.dropRate = 0.4;
@@ -90,7 +90,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             case 'explosive':
                 this.health = 50;
                 this.maxHealth = 50;
-                this.speed = 120;
+                this.speed = 70; // 속도 감소 (120 -> 70)
                 this.damage = 30;
                 this.expValue = 25;
                 this.dropRate = 0.5;
@@ -101,7 +101,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             case 'boss':
                 this.health = 1000;
                 this.maxHealth = 1000;
-                this.speed = 50;
+                this.speed = 30; // 속도 감소 (50 -> 30)
                 this.damage = 30;
                 this.expValue = 100;
                 this.dropRate = 1.0; // 100% 드롭
@@ -120,7 +120,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             default:
                 this.health = 100;
                 this.maxHealth = 100;
-                this.speed = 100;
+                this.speed = 60; // 속도 감소 (100 -> 60)
                 this.damage = 10;
                 this.expValue = 10;
                 this.dropRate = 0.3;
@@ -138,9 +138,27 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         });
     }
     
-    update() {
+    update(time, delta) {
         // 스턴 상태면 움직이지 않음
         if (this.stunned) return;
+        
+        // 플레이어가 없거나 사망한 경우 움직이지 않음
+        if (!this.scene.player || this.scene.player.isDead) {
+            this.setVelocity(0, 0);
+            return;
+        }
+        
+        // 화면 밖에 있는 경우 업데이트 건너뛰기 (최적화)
+        const distanceToPlayer = Phaser.Math.Distance.Between(
+            this.x, this.y,
+            this.scene.player.x, this.scene.player.y
+        );
+        
+        // 플레이어와 너무 멀리 떨어져 있으면 업데이트 빈도 줄이기
+        if (distanceToPlayer > 800) {
+            // 10프레임마다 한 번씩만 업데이트
+            if (time % 10 !== 0) return;
+        }
         
         // 행동 패턴에 따른 업데이트
         switch (this.currentBehavior) {
@@ -178,15 +196,16 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         const player = this.scene.player;
         const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
         
-        // 속도 계산
-        const velocityX = Math.cos(angle) * this.speed;
-        const velocityY = Math.sin(angle) * this.speed;
+        // 속도 계산 - 부드러운 이동을 위해 보간 적용
+        const targetVelocityX = Math.cos(angle) * this.speed;
+        const targetVelocityY = Math.sin(angle) * this.speed;
         
-        // 속도 설정
-        this.setVelocity(velocityX, velocityY);
+        // 현재 속도에서 목표 속도로 부드럽게 전환
+        this.body.velocity.x += (targetVelocityX - this.body.velocity.x) * 0.1;
+        this.body.velocity.y += (targetVelocityY - this.body.velocity.y) * 0.1;
         
         // 스프라이트 방향 설정
-        if (velocityX < 0) {
+        if (this.body.velocity.x < 0) {
             this.setFlipX(true);
         } else {
             this.setFlipX(false);
