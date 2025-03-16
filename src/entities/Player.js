@@ -789,13 +789,18 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     // 공격 수행
     performAttack() {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
         // 가장 가까운 적 찾기
         let closestEnemy = null;
         let closestDistance = Infinity;
         
         if (this.scene.enemies) {
             this.scene.enemies.getChildren().forEach(enemy => {
-                if (enemy.active) {
+                if (enemy && enemy.active) {
                     const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
                     
                     if (distance < this.attackRange && distance < closestDistance) {
@@ -825,6 +830,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     
     // 공격 효과 생성
     createAttackEffect(enemy) {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active || !enemy || !enemy.active) {
+            return;
+        }
+        
         try {
             // 속성에 따른 효과 색상
             let color;
@@ -863,7 +873,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             
             // 효과음 재생
             try {
-                this.scene.sound.play('player_attack');
+                if (this.scene.sound && this.scene.sound.play) {
+                    this.scene.sound.play('player_attack');
+                }
             } catch (error) {
                 console.error('공격 효과음 재생 중 오류:', error);
             }
@@ -874,89 +886,107 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     
     // 속성별 추가 효과
     applyElementEffect(enemy) {
-        switch (this.element) {
-            case 'fire':
-                // 화상 효과 (시간당 추가 데미지)
-                if (!enemy.burning) {
-                    enemy.burning = true;
-                    
-                    // 화상 타이머 (3초간 매 초마다 데미지)
-                    const burnTimer = this.scene.time.addEvent({
-                        delay: 1000,
-                        callback: () => {
-                            if (enemy && enemy.active) {
-                                enemy.takeDamage(this.attackDamage * 0.2);
-                                this.createElementEffect(enemy.x, enemy.y, 0xff5500, 0.5);
-                            }
-                        },
-                        repeat: 2
-                    });
-                    
-                    // 화상 종료 후 상태 초기화
-                    this.scene.time.delayedCall(3000, () => {
-                        if (enemy && enemy.active) {
-                            enemy.burning = false;
-                        }
-                    });
-                }
-                break;
-                
-            case 'water':
-                // 둔화 효과 (이동 속도 감소)
-                if (!enemy.slowed) {
-                    enemy.slowed = true;
-                    
-                    // 원래 속도 저장
-                    const originalSpeed = enemy.speed;
-                    
-                    // 속도 감소
-                    enemy.speed *= 0.6;
-                    
-                    // 둔화 효과 표시
-                    this.createElementEffect(enemy.x, enemy.y, 0x00aaff, 0.5);
-                    
-                    // 둔화 종료 후 상태 초기화
-                    this.scene.time.delayedCall(2000, () => {
-                        if (enemy && enemy.active) {
-                            enemy.speed = originalSpeed;
-                            enemy.slowed = false;
-                        }
-                    });
-                }
-                break;
-                
-            case 'earth':
-                // 넉백 효과 (밀어내기)
-                const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
-                const knockbackForce = 200;
-                
-                enemy.body.setVelocity(
-                    Math.cos(angle) * knockbackForce,
-                    Math.sin(angle) * knockbackForce
-                );
-                
-                // 넉백 효과 표시
-                this.createElementEffect(enemy.x, enemy.y, 0xaa5500, 0.5);
-                break;
-                
-            case 'air':
-                // 다중 타격 효과 (주변 적에게 추가 데미지)
-                this.scene.enemies.getChildren().forEach(nearbyEnemy => {
-                    if (nearbyEnemy !== enemy && nearbyEnemy.active) {
-                        const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, nearbyEnemy.x, nearbyEnemy.y);
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active || !enemy || !enemy.active) {
+            return;
+        }
+        
+        try {
+            switch (this.element) {
+                case 'fire':
+                    // 화상 효과 (시간당 추가 데미지)
+                    if (!enemy.burning) {
+                        enemy.burning = true;
                         
-                        if (distance < 100) {
-                            nearbyEnemy.takeDamage(this.attackDamage * 0.5);
-                            this.createElementEffect(nearbyEnemy.x, nearbyEnemy.y, 0x00ff00, 0.5);
-                        }
+                        // 화상 타이머 (3초간 매 초마다 데미지)
+                        const burnTimer = this.scene.time.addEvent({
+                            delay: 1000,
+                            callback: () => {
+                                if (enemy && enemy.active) {
+                                    enemy.takeDamage(this.attackDamage * 0.2);
+                                    this.createElementEffect(enemy.x, enemy.y, 0xff5500, 0.5);
+                                }
+                            },
+                            repeat: 2
+                        });
+                        
+                        // 화상 종료 후 상태 초기화
+                        this.scene.time.delayedCall(3000, () => {
+                            if (enemy && enemy.active) {
+                                enemy.burning = false;
+                            }
+                        });
                     }
-                });
-                break;
+                    break;
+                    
+                case 'water':
+                    // 둔화 효과 (이동 속도 감소)
+                    if (!enemy.slowed) {
+                        enemy.slowed = true;
+                        
+                        // 원래 속도 저장
+                        const originalSpeed = enemy.speed || 100;
+                        
+                        // 속도 감소
+                        enemy.speed = originalSpeed * 0.6;
+                        
+                        // 둔화 효과 표시
+                        this.createElementEffect(enemy.x, enemy.y, 0x00aaff, 0.5);
+                        
+                        // 둔화 종료 후 상태 초기화
+                        this.scene.time.delayedCall(2000, () => {
+                            if (enemy && enemy.active) {
+                                enemy.speed = originalSpeed;
+                                enemy.slowed = false;
+                            }
+                        });
+                    }
+                    break;
+                    
+                case 'earth':
+                    // 넉백 효과 (밀어내기)
+                    const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
+                    const knockbackForce = 200;
+                    
+                    if (enemy.body) {
+                        enemy.body.setVelocity(
+                            Math.cos(angle) * knockbackForce,
+                            Math.sin(angle) * knockbackForce
+                        );
+                    }
+                    
+                    // 넉백 효과 표시
+                    this.createElementEffect(enemy.x, enemy.y, 0xaa5500, 0.5);
+                    break;
+                    
+                case 'air':
+                    // 다중 타격 효과 (주변 적에게 추가 데미지)
+                    if (this.scene.enemies) {
+                        this.scene.enemies.getChildren().forEach(nearbyEnemy => {
+                            if (nearbyEnemy !== enemy && nearbyEnemy && nearbyEnemy.active) {
+                                const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, nearbyEnemy.x, nearbyEnemy.y);
+                                
+                                if (distance < 100) {
+                                    nearbyEnemy.takeDamage(this.attackDamage * 0.5);
+                                    this.createElementEffect(nearbyEnemy.x, nearbyEnemy.y, 0x00ff00, 0.5);
+                                }
+                            }
+                        });
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('속성 효과 적용 중 오류:', error);
         }
     }
     
     // 속성 효과 생성
     createElementEffect(x, y, color, alpha = 0.7) {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
         try {
             // 효과 생성
             const effect = this.scene.add.circle(x, y, 15, color, alpha);

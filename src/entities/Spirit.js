@@ -235,6 +235,11 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     }
 
     attack() {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
         // 타겟이 없으면 찾기
         if (!this.targetEnemy || !this.targetEnemy.active) {
             this.findTarget();
@@ -252,7 +257,9 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
                 
                 // 효과음 재생
                 try {
-                    this.scene.sound.play('spirit_attack');
+                    if (this.scene.sound && this.scene.sound.play) {
+                        this.scene.sound.play('spirit_attack');
+                    }
                 } catch (error) {
                     console.error('효과음 재생 중 오류 발생:', error);
                 }
@@ -261,6 +268,11 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     }
     
     shootGuidedBall() {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
         // 타겟이 없으면 공격하지 않음
         if (!this.targetEnemy || !this.targetEnemy.active) {
             return;
@@ -277,20 +289,13 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
         }
         
         try {
-            // 씬이 활성화되어 있는지 확인
-            if (!this.scene || !this.scene.active) {
-                return;
-            }
-            
-            // 볼 생성 (스프라이트로 변경)
-            const ball = this.scene.add.sprite(this.x, this.y, 'spirit');
+            // 볼 생성 (원으로 변경)
+            const ball = this.scene.add.circle(this.x, this.y, 10, color, 0.8);
             if (!ball) {
                 console.error('볼 생성 실패');
                 return;
             }
             
-            ball.setScale(0.5);
-            ball.setTint(color);
             ball.setDepth(this.depth + 1);
             
             // 볼에 물리 속성 추가
@@ -312,17 +317,14 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
             ball.lifespan = 3000; // 3초 후 자동 소멸
             ball.speed = 300; // 볼 속도
             
-            // 볼 발광 효과 (스프라이트로 변경)
-            const glow = this.scene.add.sprite(ball.x, ball.y, 'spirit');
+            // 볼 발광 효과 (원으로 변경)
+            const glow = this.scene.add.circle(ball.x, ball.y, 15, color, 0.4);
             if (!glow) {
                 console.error('발광 효과 생성 실패');
                 if (ball.active) ball.destroy();
                 return;
             }
             
-            glow.setScale(0.8);
-            glow.setTint(color);
-            glow.setAlpha(0.5);
             glow.setDepth(ball.depth - 1);
             
             // 볼 애니메이션
@@ -330,7 +332,7 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
                 this.scene.tweens.add({
                     targets: glow,
                     scale: { from: 0.7, to: 1.0 },
-                    alpha: { from: 0.5, to: 0.2 },
+                    alpha: { from: 0.4, to: 0.2 },
                     duration: 500,
                     yoyo: true,
                     repeat: -1
@@ -340,7 +342,7 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
             }
             
             // 볼 업데이트 함수 (간소화)
-            const updateBall = function(time, delta) {
+            const updateBall = (time, delta) => {
                 // 볼이 파괴되었거나 물리 속성이 없으면 리턴
                 if (!ball || !ball.active || !ball.body) {
                     return;
@@ -381,41 +383,43 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
             
             // 볼과 적 충돌 설정
             try {
-                const overlapCollider = this.scene.physics.add.overlap(ball, this.scene.enemies, (ball, enemy) => {
-                    try {
-                        // 데미지 적용
-                        if (enemy && enemy.active) {
-                            enemy.takeDamage(ball.damage);
-                            
-                            // 속성별 추가 효과
-                            this.applyElementEffect(enemy, ball.element);
-                        }
-                        
-                        // 충돌 효과
-                        this.createImpactEffect(ball.x, ball.y, color);
-                        
-                        // 볼 제거
-                        if (ball && ball.active) {
-                            // 이벤트 리스너 제거
-                            if (ball.scene) {
-                                ball.scene.events.off('update', updateBall);
+                if (this.scene.enemies) {
+                    const overlapCollider = this.scene.physics.add.overlap(ball, this.scene.enemies, (ball, enemy) => {
+                        try {
+                            // 데미지 적용
+                            if (enemy && enemy.active) {
+                                enemy.takeDamage(ball.damage);
+                                
+                                // 속성별 추가 효과
+                                this.applyElementEffect(enemy, ball.element);
                             }
                             
-                            // 충돌체 제거
-                            if (overlapCollider) {
-                                overlapCollider.destroy();
+                            // 충돌 효과
+                            this.createImpactEffect(ball.x, ball.y, color);
+                            
+                            // 볼 제거
+                            if (ball && ball.active) {
+                                // 이벤트 리스너 제거
+                                if (ball.scene) {
+                                    ball.scene.events.off('update', updateBall);
+                                }
+                                
+                                // 충돌체 제거
+                                if (overlapCollider) {
+                                    overlapCollider.destroy();
+                                }
+                                
+                                ball.destroy();
                             }
                             
-                            ball.destroy();
+                            if (glow && glow.active) {
+                                glow.destroy();
+                            }
+                        } catch (error) {
+                            console.error('볼 충돌 처리 중 오류:', error);
                         }
-                        
-                        if (glow && glow.active) {
-                            glow.destroy();
-                        }
-                    } catch (error) {
-                        console.error('볼 충돌 처리 중 오류:', error);
-                    }
-                });
+                    });
+                }
             } catch (error) {
                 console.error('볼 충돌 설정 중 오류:', error);
             }
