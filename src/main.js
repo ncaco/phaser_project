@@ -47,16 +47,32 @@ try {
     
     // 전역 설정
     window.gameSettings = {
-        isMobile: isMobile(),
+        isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
         defaultWidth: 800,
         defaultHeight: 600,
-        minWidth: 320,
-        minHeight: 240,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        aspectRatio: 4/3,
-        uiScale: 1,
-        fontSizeBase: 16,
+        minWidth: 400,
+        minHeight: 300,
+        maxWidth: 1600,
+        maxHeight: 1200,
+        aspectRatio: 16/9,
+        get uiScale() {
+            // 화면 크기에 따른 UI 스케일 계산
+            const scaleX = window.innerWidth / this.defaultWidth;
+            const scaleY = window.innerHeight / this.defaultHeight;
+            let scale = Math.min(scaleX, scaleY);
+            
+            // 모바일 환경에서는 UI 요소를 더 크게 표시
+            if (this.isMobile) {
+                scale = Math.max(scale, 0.8); // 최소 스케일 보장
+                return scale * 1.3; // 모바일에서는 30% 더 크게
+            }
+            
+            return scale;
+        },
+        get fontSizeBase() {
+            // 기본 폰트 크기 계산
+            return this.isMobile ? 18 : 16; // 모바일에서는 기본 폰트 크기를 더 크게
+        },
         debug: false
     };
     
@@ -100,20 +116,6 @@ try {
         // 최소 크기 제한
         width = Math.max(width, window.gameSettings.minWidth);
         height = Math.max(height, window.gameSettings.minHeight);
-        
-        // UI 스케일 계산 (기본 해상도 대비)
-        window.gameSettings.uiScale = Math.min(
-            width / window.gameSettings.defaultWidth,
-            height / window.gameSettings.defaultHeight
-        );
-        
-        // 모바일 환경에서는 UI 요소를 더 크게 표시
-        if (window.gameSettings.isMobile) {
-            window.gameSettings.uiScale *= 1.2;
-            window.gameSettings.fontSizeBase = 20;
-        } else {
-            window.gameSettings.fontSizeBase = 16;
-        }
         
         // 정수로 반올림
         return {
@@ -251,49 +253,59 @@ try {
     window.game = game;
     
     // 전역 유틸리티 함수
-    window.getScaledValue = (value) => {
+    window.getScaledValue = function(value) {
         return value * window.gameSettings.uiScale;
     };
     
-    window.getScaledFontSize = (size = window.gameSettings.fontSizeBase) => {
-        return Math.floor(size * window.gameSettings.uiScale);
+    window.getScaledFontSize = function(size) {
+        return Math.round(size * window.gameSettings.uiScale);
     };
     
-    window.getResponsivePosition = (x, y, width, height, align = 'center', valign = 'middle') => {
-        const gameWidth = game.scale.width;
-        const gameHeight = game.scale.height;
+    window.getResponsivePosition = function(alignment, offset = 0) {
+        const width = game.scale.width;
+        const height = game.scale.height;
         
-        let posX, posY;
-        
-        // 수평 정렬
-        switch (align) {
+        switch (alignment) {
             case 'left':
-                posX = x;
-                break;
+                return window.getScaledValue(20 + offset);
             case 'right':
-                posX = gameWidth - x;
-                break;
-            case 'center':
-            default:
-                posX = gameWidth / 2;
-                break;
-        }
-        
-        // 수직 정렬
-        switch (valign) {
+                return width - window.getScaledValue(20 + offset);
             case 'top':
-                posY = y;
-                break;
+                return window.getScaledValue(20 + offset);
             case 'bottom':
-                posY = gameHeight - y;
-                break;
-            case 'middle':
+                return height - window.getScaledValue(20 + offset);
+            case 'center-x':
+                return width / 2 + window.getScaledValue(offset);
+            case 'center-y':
+                return height / 2 + window.getScaledValue(offset);
             default:
-                posY = gameHeight / 2;
-                break;
+                return 0;
+        }
+    };
+    
+    // 디버그 로그 함수
+    window.logDebug = function(message) {
+        if (window.gameSettings.debug) {
+            console.log(`[DEBUG] ${message}`);
         }
         
-        return { x: posX, y: posY };
+        // 디버그 패널에 로그 추가
+        const debugPanel = document.getElementById('debug-log');
+        if (debugPanel) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            debugPanel.appendChild(logEntry);
+            
+            // 로그 항목이 너무 많으면 오래된 항목 제거
+            const maxLogEntries = 50;
+            while (debugPanel.childElementCount > maxLogEntries) {
+                debugPanel.removeChild(debugPanel.firstChild);
+            }
+            
+            // 자동 스크롤
+            debugPanel.scrollTop = debugPanel.scrollHeight;
+        }
     };
     
 } catch (error) {

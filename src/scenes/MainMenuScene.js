@@ -68,7 +68,7 @@ class MainMenuScene extends Phaser.Scene {
             titleY, 
             'title'
         );
-        this.uiElements.title.setScale(window.getScaledValue(1.2));
+        this.uiElements.title.setScale(window.getScaledValue(1.0));
         
         // 게임 설명 텍스트
         const descriptionText = [
@@ -87,7 +87,7 @@ class MainMenuScene extends Phaser.Scene {
             descY,
             descriptionText,
             {
-                font: `${window.getScaledFontSize(18)}px Arial`,
+                font: `${window.getScaledFontSize(16)}px Arial`,
                 fill: '#ffffff',
                 align: 'center'
             }
@@ -100,7 +100,7 @@ class MainMenuScene extends Phaser.Scene {
             difficultyTitleY,
             '난이도 선택',
             {
-                font: `${window.getScaledFontSize(24)}px Arial`,
+                font: `${window.getScaledFontSize(20)}px Arial`,
                 fill: '#ffffff',
                 align: 'center'
             }
@@ -108,7 +108,7 @@ class MainMenuScene extends Phaser.Scene {
         
         // 난이도 버튼 생성
         const buttonY = this.cameras.main.height * 0.52;
-        const buttonSpacing = window.getScaledValue(150);
+        const buttonSpacing = window.getScaledValue(120);
         
         this.uiElements.easyButton = this.createDifficultyButton(
             '쉬움', 
@@ -138,7 +138,7 @@ class MainMenuScene extends Phaser.Scene {
             elementTitleY,
             '속성 선택',
             {
-                font: `${window.getScaledFontSize(24)}px Arial`,
+                font: `${window.getScaledFontSize(20)}px Arial`,
                 fill: '#ffffff',
                 align: 'center'
             }
@@ -146,7 +146,7 @@ class MainMenuScene extends Phaser.Scene {
         
         // 속성 버튼 생성
         const elementY = this.cameras.main.height * 0.69;
-        const elementSpacing = window.getScaledValue(120);
+        const elementSpacing = window.getScaledValue(100);
         
         this.uiElements.fireButton = this.createElementButton(
             '불', 
@@ -187,7 +187,7 @@ class MainMenuScene extends Phaser.Scene {
             startButtonY, 
             'button'
         );
-        this.uiElements.startButton.setScale(window.getScaledValue(1.2));
+        this.uiElements.startButton.setScale(window.getScaledValue(1.0));
         
         // 시작 버튼 텍스트
         this.uiElements.startButtonText = this.add.text(
@@ -195,7 +195,7 @@ class MainMenuScene extends Phaser.Scene {
             this.uiElements.startButton.y, 
             '게임 시작', 
             {
-                font: `${window.getScaledFontSize(24)}px Arial`,
+                font: `${window.getScaledFontSize(20)}px Arial`,
                 fill: '#ffffff'
             }
         ).setOrigin(0.5);
@@ -214,11 +214,11 @@ class MainMenuScene extends Phaser.Scene {
         
         // 버튼 호버 효과
         this.uiElements.startButton.on('pointerover', () => {
-            this.uiElements.startButton.setScale(window.getScaledValue(1.3));
+            this.uiElements.startButton.setScale(window.getScaledValue(1.1));
         });
         
         this.uiElements.startButton.on('pointerout', () => {
-            this.uiElements.startButton.setScale(window.getScaledValue(1.2));
+            this.uiElements.startButton.setScale(window.getScaledValue(1.0));
         });
         
         // 버전 정보
@@ -249,7 +249,7 @@ class MainMenuScene extends Phaser.Scene {
                 this.cameras.main.height * 0.9,
                 '모바일 환경에서는 화면을 터치하여 이동할 수 있습니다',
                 {
-                    font: `${window.getScaledFontSize(16)}px Arial`,
+                    font: `${window.getScaledFontSize(14)}px Arial`,
                     fill: '#ffffff',
                     align: 'center'
                 }
@@ -261,36 +261,27 @@ class MainMenuScene extends Phaser.Scene {
     createDifficultyButton(text, x, y, difficulty) {
         // 버튼 배경 생성
         const button = this.add.image(x, y, 'button');
-        button.setScale(window.getScaledValue(0.8));
+        button.setScale(window.getScaledValue(0.8)); // 버튼 크기 조정
         
         // 버튼 텍스트 생성
         const buttonText = this.add.text(x, y, text, {
-            font: `${window.getScaledFontSize(20)}px Arial`,
+            font: `${window.getScaledFontSize(18)}px Arial`,
             fill: '#ffffff'
         }).setOrigin(0.5);
         
         // 버튼 상호작용 설정
         button.setInteractive();
         
-        // 현재 선택된 난이도인지 표시
-        if (difficulty === this.selectedDifficulty) {
-            button.setTint(0x00ff00); // 선택된 버튼은 녹색으로 표시
-        }
+        // 선택 표시 생성
+        const selectedIndicator = this.add.image(x, y + window.getScaledValue(30), 'selected');
+        selectedIndicator.setScale(window.getScaledValue(0.5));
+        selectedIndicator.setVisible(difficulty === this.selectedDifficulty);
         
         // 버튼 클릭 이벤트
         button.on('pointerdown', () => {
             this.logDebug(`난이도 선택: ${difficulty}`);
             this.selectedDifficulty = difficulty;
-            
-            // 모든 난이도 버튼 색상 초기화
-            [this.uiElements.easyButton, this.uiElements.normalButton, this.uiElements.hardButton].forEach(btn => {
-                if (btn && btn !== button) {
-                    btn.clearTint();
-                }
-            });
-            
-            // 선택된 버튼 색상 변경
-            button.setTint(0x00ff00);
+            this.updateDifficultySelection();
         });
         
         // 버튼 호버 효과
@@ -302,7 +293,16 @@ class MainMenuScene extends Phaser.Scene {
             button.setScale(window.getScaledValue(0.8));
         });
         
-        return button;
+        return {
+            button,
+            text: buttonText,
+            selectedIndicator,
+            setPosition: (newX, newY) => {
+                button.setPosition(newX, newY);
+                buttonText.setPosition(newX, newY);
+                selectedIndicator.setPosition(newX, newY + window.getScaledValue(30));
+            }
+        };
     }
     
     // 전체 화면 전환 버튼 생성
@@ -353,6 +353,8 @@ class MainMenuScene extends Phaser.Scene {
         const width = gameSize.width || this.cameras.main.width;
         const height = gameSize.height || this.cameras.main.height;
         
+        this.logDebug(`화면 크기 조정: ${width}x${height}`);
+        
         // 배경 크기 조정
         this.uiElements.background.setPosition(width / 2, height / 2);
         this.uiElements.background.setDisplaySize(width, height);
@@ -360,28 +362,23 @@ class MainMenuScene extends Phaser.Scene {
         // 타이틀 위치 조정
         const titleY = height * 0.15;
         this.uiElements.title.setPosition(width / 2, titleY);
-        this.uiElements.title.setScale(window.getScaledValue(1.2));
+        this.uiElements.title.setScale(window.getScaledValue(1.0));
         
         // 설명 텍스트 위치 조정
         this.uiElements.description.setPosition(width / 2, height * 0.3);
-        this.uiElements.description.setFontSize(window.getScaledFontSize(18));
+        this.uiElements.description.setFontSize(window.getScaledFontSize(16));
         
         // 난이도 선택 텍스트 위치 조정
         this.uiElements.difficultyTitle.setPosition(width / 2, height * 0.45);
-        this.uiElements.difficultyTitle.setFontSize(window.getScaledFontSize(24));
+        this.uiElements.difficultyTitle.setFontSize(window.getScaledFontSize(20));
         
         // 난이도 버튼 위치 조정
         const buttonY = height * 0.52;
-        const buttonSpacing = window.getScaledValue(150);
+        const buttonSpacing = window.getScaledValue(120);
         
         this.uiElements.easyButton.setPosition(width / 2 - buttonSpacing, buttonY);
-        this.uiElements.easyButton.setScale(window.getScaledValue(0.8));
-        
         this.uiElements.normalButton.setPosition(width / 2, buttonY);
-        this.uiElements.normalButton.setScale(window.getScaledValue(0.8));
-        
         this.uiElements.hardButton.setPosition(width / 2 + buttonSpacing, buttonY);
-        this.uiElements.hardButton.setScale(window.getScaledValue(0.8));
         
         // 버튼 텍스트 위치 조정
         const buttonTexts = this.children.list.filter(child => 
@@ -403,32 +400,25 @@ class MainMenuScene extends Phaser.Scene {
         // 속성 선택 텍스트 위치 조정
         const elementTitleY = height * 0.62;
         this.uiElements.elementTitle.setPosition(width / 2, elementTitleY);
-        this.uiElements.elementTitle.setFontSize(window.getScaledFontSize(24));
+        this.uiElements.elementTitle.setFontSize(window.getScaledFontSize(20));
         
         // 속성 버튼 위치 조정
         const elementY = height * 0.69;
-        const elementSpacing = window.getScaledValue(120);
+        const elementSpacing = window.getScaledValue(100);
         
         this.uiElements.fireButton.setPosition(width / 2 - elementSpacing * 1.5, elementY);
-        this.uiElements.fireButton.setScale(window.getScaledValue(0.8));
-        
         this.uiElements.waterButton.setPosition(width / 2 - elementSpacing * 0.5, elementY);
-        this.uiElements.waterButton.setScale(window.getScaledValue(0.8));
-        
         this.uiElements.earthButton.setPosition(width / 2 + elementSpacing * 0.5, elementY);
-        this.uiElements.earthButton.setScale(window.getScaledValue(0.8));
-        
         this.uiElements.airButton.setPosition(width / 2 + elementSpacing * 1.5, elementY);
-        this.uiElements.airButton.setScale(window.getScaledValue(0.8));
         
         // 시작 버튼 위치 조정
         const startButtonY = height * 0.82;
         this.uiElements.startButton.setPosition(width / 2, startButtonY);
-        this.uiElements.startButton.setScale(window.getScaledValue(1.2));
+        this.uiElements.startButton.setScale(window.getScaledValue(1.0));
         
         // 시작 버튼 텍스트 위치 조정
         this.uiElements.startButtonText.setPosition(width / 2, startButtonY);
-        this.uiElements.startButtonText.setFontSize(window.getScaledFontSize(24));
+        this.uiElements.startButtonText.setFontSize(window.getScaledFontSize(20));
         
         // 버전 정보 위치 조정
         this.uiElements.versionText.setPosition(
@@ -456,7 +446,7 @@ class MainMenuScene extends Phaser.Scene {
         // 모바일 컨트롤 안내 위치 조정 (모바일 환경에서만)
         if (window.gameSettings.isMobile && this.uiElements.mobileControlsText) {
             this.uiElements.mobileControlsText.setPosition(width / 2, height * 0.9);
-            this.uiElements.mobileControlsText.setFontSize(window.getScaledFontSize(16));
+            this.uiElements.mobileControlsText.setFontSize(window.getScaledFontSize(14));
         }
         
         // 타이틀 애니메이션 업데이트
@@ -472,65 +462,52 @@ class MainMenuScene extends Phaser.Scene {
     }
 
     // 속성 선택 버튼 생성 함수
-    createElementButton(text, x, y, element, tint) {
-        // 버튼 배경
-        const button = this.add.circle(x, y, window.getScaledValue(40), tint, 0.8);
-        button.setStrokeStyle(2, 0xffffff);
+    createElementButton(text, x, y, element, color) {
+        // 버튼 배경 생성
+        const button = this.add.image(x, y, 'button');
+        button.setScale(window.getScaledValue(0.7)); // 버튼 크기 조정
+        button.setTint(color); // 속성에 맞는 색상 적용
         
-        // 버튼 텍스트
+        // 버튼 텍스트 생성
         const buttonText = this.add.text(x, y, text, {
             font: `${window.getScaledFontSize(18)}px Arial`,
             fill: '#ffffff'
         }).setOrigin(0.5);
         
-        // 선택 표시 (초기에는 기본 속성만 표시)
-        const selectedIndicator = this.add.circle(x, y, window.getScaledValue(45), 0xffffff, 0.3);
-        selectedIndicator.setVisible(element === this.selectedElement);
-        
         // 버튼 상호작용 설정
         button.setInteractive();
+        
+        // 선택 표시 생성
+        const selectedIndicator = this.add.image(x, y + window.getScaledValue(25), 'selected');
+        selectedIndicator.setScale(window.getScaledValue(0.4));
+        selectedIndicator.setVisible(element === this.selectedElement);
         
         // 버튼 클릭 이벤트
         button.on('pointerdown', () => {
             this.logDebug(`속성 선택: ${element}`);
             this.selectedElement = element;
-            
-            // 모든 선택 표시 숨기기
-            this.hideAllElementSelections();
-            
-            // 현재 선택된 버튼만 표시
-            selectedIndicator.setVisible(true);
+            this.updateElementSelection();
         });
         
         // 버튼 호버 효과
         button.on('pointerover', () => {
-            button.setScale(1.1);
-            buttonText.setScale(1.1);
+            button.setScale(window.getScaledValue(0.8));
         });
         
         button.on('pointerout', () => {
-            button.setScale(1.0);
-            buttonText.setScale(1.0);
+            button.setScale(window.getScaledValue(0.7));
         });
         
-        // 버튼 객체 저장
-        const buttonObj = {
-            background: button,
+        return {
+            button,
             text: buttonText,
-            selectedIndicator: selectedIndicator,
+            selectedIndicator,
             setPosition: (newX, newY) => {
                 button.setPosition(newX, newY);
                 buttonText.setPosition(newX, newY);
-                selectedIndicator.setPosition(newX, newY);
-            },
-            setScale: (scale) => {
-                button.setScale(scale);
-                buttonText.setScale(scale);
-                selectedIndicator.setScale(scale);
+                selectedIndicator.setPosition(newX, newY + window.getScaledValue(25));
             }
         };
-        
-        return buttonObj;
     }
     
     // 모든 속성 선택 표시 숨기기
@@ -539,6 +516,21 @@ class MainMenuScene extends Phaser.Scene {
         if (this.uiElements.waterButton) this.uiElements.waterButton.selectedIndicator.setVisible(false);
         if (this.uiElements.earthButton) this.uiElements.earthButton.selectedIndicator.setVisible(false);
         if (this.uiElements.airButton) this.uiElements.airButton.selectedIndicator.setVisible(false);
+    }
+
+    updateDifficultySelection() {
+        // 모든 난이도 버튼의 선택 표시 업데이트
+        this.uiElements.easyButton.selectedIndicator.setVisible(this.selectedDifficulty === 'easy');
+        this.uiElements.normalButton.selectedIndicator.setVisible(this.selectedDifficulty === 'normal');
+        this.uiElements.hardButton.selectedIndicator.setVisible(this.selectedDifficulty === 'hard');
+    }
+    
+    updateElementSelection() {
+        // 모든 속성 버튼의 선택 표시 업데이트
+        this.uiElements.fireButton.selectedIndicator.setVisible(this.selectedElement === 'fire');
+        this.uiElements.waterButton.selectedIndicator.setVisible(this.selectedElement === 'water');
+        this.uiElements.earthButton.selectedIndicator.setVisible(this.selectedElement === 'earth');
+        this.uiElements.airButton.selectedIndicator.setVisible(this.selectedElement === 'air');
     }
 }
 
