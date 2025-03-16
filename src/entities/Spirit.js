@@ -10,7 +10,7 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
         this.name = name;
         this.level = 1;
         this.damage = 10;
-        this.attackSpeed = 1000; // 공격 속도 (밀리초)
+        this.attackSpeed = 1000; // 공격 속도 (밀리초) - 항상 1초로 고정
         this.attackRange = 150; // 공격 범위
         this.targetEnemy = null;
         
@@ -22,6 +22,9 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
         
         // 애니메이션 설정
         this.setupAnimations();
+        
+        // 공격 로딩 프로그레스 바 생성
+        this.createAttackProgressBar();
         
         // 공격 타이머 설정
         this.attackTimer = scene.time.addEvent({
@@ -38,6 +41,85 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
             callbackScope: this,
             loop: true
         });
+        
+        // 공격 쿨다운 진행 상태
+        this.attackCooldown = 0;
+    }
+    
+    // 공격 로딩 프로그레스 바 생성
+    createAttackProgressBar() {
+        // 씬이 유효한지 확인
+        if (!this.scene) {
+            return;
+        }
+        
+        try {
+            // 프로그레스 바 배경
+            this.progressBarBg = this.scene.add.rectangle(
+                this.x,
+                this.y - 30,
+                30,
+                5,
+                0x000000,
+                0.7
+            );
+            this.progressBarBg.setDepth(this.depth + 10);
+            
+            // 프로그레스 바 전경
+            this.progressBar = this.scene.add.rectangle(
+                this.x - 15,
+                this.y - 30,
+                0,
+                3,
+                0xffffff,
+                1
+            );
+            this.progressBar.setOrigin(0, 0.5);
+            this.progressBar.setDepth(this.depth + 11);
+            
+            // 속성에 따른 프로그레스 바 색상 설정
+            this.updateProgressBarColor();
+        } catch (error) {
+            console.error('프로그레스 바 생성 중 오류:', error);
+        }
+    }
+    
+    // 프로그레스 바 색상 업데이트
+    updateProgressBarColor() {
+        if (!this.progressBar) return;
+        
+        // 속성에 따른 색상 설정
+        switch (this.element) {
+            case 'fire':
+                this.progressBar.fillColor = 0xff5500;
+                break;
+            case 'water':
+                this.progressBar.fillColor = 0x00aaff;
+                break;
+            case 'earth':
+                this.progressBar.fillColor = 0xaa5500;
+                break;
+            case 'air':
+                this.progressBar.fillColor = 0x00ff00;
+                break;
+            default:
+                this.progressBar.fillColor = 0xffffff;
+                break;
+        }
+    }
+    
+    // 프로그레스 바 업데이트
+    updateProgressBar() {
+        // 프로그레스 바가 없으면 리턴
+        if (!this.progressBarBg || !this.progressBar) return;
+        
+        // 프로그레스 바 위치 업데이트
+        this.progressBarBg.setPosition(this.x, this.y - 30);
+        this.progressBar.setPosition(this.x - 15, this.y - 30);
+        
+        // 프로그레스 바 너비 업데이트
+        const progress = this.attackCooldown / this.attackSpeed;
+        this.progressBar.width = 30 * progress;
     }
     
     setupSpiritType() {
@@ -46,32 +128,32 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
             this.element = 'fire';
             this.setTint(0xff5500);
             this.damage = 15;
-            this.attackSpeed = 1000;
+            this.attackSpeed = 1000; // 항상 1초로 고정
             this.attackRange = 120;
         } else if (this.name.includes('물')) {
             this.element = 'water';
             this.setTint(0x00aaff);
             this.damage = 12;
-            this.attackSpeed = 1000;
+            this.attackSpeed = 1000; // 항상 1초로 고정
             this.attackRange = 180;
         } else if (this.name.includes('땅')) {
             this.element = 'earth';
             this.setTint(0xaa5500);
             this.damage = 20;
-            this.attackSpeed = 1000;
+            this.attackSpeed = 1000; // 항상 1초로 고정
             this.attackRange = 100;
         } else if (this.name.includes('바람')) {
             this.element = 'air';
             this.setTint(0x00ff00);
             this.damage = 10;
-            this.attackSpeed = 1000;
+            this.attackSpeed = 1000; // 항상 1초로 고정
             this.attackRange = 200;
         } else {
             // 기본 정령 (불 속성)
             this.element = 'fire';
             this.setTint(0xff5500);
             this.damage = 15;
-            this.attackSpeed = 1000;
+            this.attackSpeed = 1000; // 항상 1초로 고정
             this.attackRange = 120;
         }
         
@@ -79,6 +161,9 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
         if (this.attackTimer) {
             this.attackTimer.delay = this.attackSpeed;
         }
+        
+        // 프로그레스 바 색상 업데이트
+        this.updateProgressBarColor();
     }
 
     setupAnimations() {
@@ -109,6 +194,12 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
         // 타겟 적 찾기
         if (!this.targetEnemy || !this.targetEnemy.active) {
             this.findTarget();
+        }
+        
+        // 공격 쿨다운 업데이트
+        if (this.attackTimer) {
+            this.attackCooldown = this.attackTimer.getElapsed();
+            this.updateProgressBar();
         }
     }
 
@@ -705,8 +796,8 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
         // 데미지 증가
         this.damage += 5;
         
-        // 공격 속도 증가
-        this.attackSpeed = Math.max(200, this.attackSpeed - 100);
+        // 공격 속도는 1초로 유지
+        this.attackSpeed = 1000;
         
         // 공격 타이머 업데이트
         this.attackTimer.reset({
@@ -745,6 +836,15 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     
     // 정령 파괴 시 타이머 정리
     destroy(fromScene) {
+        // 프로그레스 바 제거
+        if (this.progressBarBg && this.progressBarBg.active) {
+            this.progressBarBg.destroy();
+        }
+        
+        if (this.progressBar && this.progressBar.active) {
+            this.progressBar.destroy();
+        }
+        
         // 타이머 제거
         if (this.attackTimer) {
             this.attackTimer.remove();

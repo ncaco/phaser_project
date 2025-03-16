@@ -44,6 +44,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         // 속성에 따른 설정 적용
         this.applyElementSettings();
         
+        // 공격 관련 속성
+        this.lastAttackTime = 0;
+        this.isAttacking = false;
+        
+        // 공격 로딩 프로그레스 바 생성
+        this.createAttackProgressBar();
+        
         // 초기 정령 생성
         this.addSpirit(`${this.getElementName()} 정령`);
         
@@ -208,6 +215,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         // 속성 효과 위치 업데이트
         if (this.elementEffect && this.elementEffect.active) {
             this.elementEffect.setPosition(this.x, this.y);
+        }
+        
+        // 공격 로딩 프로그레스 바 업데이트
+        this.updateProgressBar();
+        
+        // 공격 쿨다운이 완료되면 자동 공격
+        if (!this.isAttacking) {
+            this.performAttack();
         }
     }
 
@@ -432,6 +447,15 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         this.isDead = true;
         this.body.setVelocity(0, 0);
+        
+        // 프로그레스 바 제거
+        if (this.progressBarBg && this.progressBarBg.active) {
+            this.progressBarBg.destroy();
+        }
+        
+        if (this.progressBar && this.progressBar.active) {
+            this.progressBar.destroy();
+        }
         
         // 모든 정령 제거
         this.spirits.forEach(spirit => {
@@ -680,6 +704,279 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this.invulnerable = false;
             this.alpha = 1;
         });
+    }
+
+    // 공격 로딩 프로그레스 바 생성
+    createAttackProgressBar() {
+        // 씬이 유효한지 확인
+        if (!this.scene) {
+            return;
+        }
+        
+        try {
+            // 프로그레스 바 배경
+            this.progressBarBg = this.scene.add.rectangle(
+                this.x,
+                this.y - 40,
+                40,
+                6,
+                0x000000,
+                0.7
+            );
+            this.progressBarBg.setDepth(this.depth + 10);
+            
+            // 프로그레스 바 전경
+            this.progressBar = this.scene.add.rectangle(
+                this.x - 20,
+                this.y - 40,
+                0,
+                4,
+                0xffffff,
+                1
+            );
+            this.progressBar.setOrigin(0, 0.5);
+            this.progressBar.setDepth(this.depth + 11);
+            
+            // 속성에 따른 프로그레스 바 색상 설정
+            this.updateProgressBarColor();
+        } catch (error) {
+            console.error('프로그레스 바 생성 중 오류:', error);
+        }
+    }
+    
+    // 프로그레스 바 색상 업데이트
+    updateProgressBarColor() {
+        if (!this.progressBar) return;
+        
+        // 속성에 따른 색상 설정
+        switch (this.element) {
+            case 'fire':
+                this.progressBar.fillColor = 0xff5500;
+                break;
+            case 'water':
+                this.progressBar.fillColor = 0x00aaff;
+                break;
+            case 'earth':
+                this.progressBar.fillColor = 0xaa5500;
+                break;
+            case 'air':
+                this.progressBar.fillColor = 0x00ff00;
+                break;
+            default:
+                this.progressBar.fillColor = 0xffffff;
+                break;
+        }
+    }
+    
+    // 프로그레스 바 업데이트
+    updateProgressBar() {
+        // 프로그레스 바가 없으면 리턴
+        if (!this.progressBarBg || !this.progressBar) return;
+        
+        // 프로그레스 바 위치 업데이트
+        this.progressBarBg.setPosition(this.x, this.y - 40);
+        this.progressBar.setPosition(this.x - 20, this.y - 40);
+        
+        // 프로그레스 바 너비 업데이트
+        const currentTime = this.scene.time.now;
+        const elapsedTime = currentTime - this.lastAttackTime;
+        const progress = Math.min(1, elapsedTime / this.attackSpeed);
+        this.progressBar.width = 40 * progress;
+        
+        // 공격 가능 상태 업데이트
+        this.isAttacking = progress < 1;
+    }
+
+    // 공격 수행
+    performAttack() {
+        // 가장 가까운 적 찾기
+        let closestEnemy = null;
+        let closestDistance = Infinity;
+        
+        if (this.scene.enemies) {
+            this.scene.enemies.getChildren().forEach(enemy => {
+                if (enemy.active) {
+                    const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+                    
+                    if (distance < this.attackRange && distance < closestDistance) {
+                        closestEnemy = enemy;
+                        closestDistance = distance;
+                    }
+                }
+            });
+        }
+        
+        // 적이 있으면 공격
+        if (closestEnemy) {
+            // 공격 효과 생성
+            this.createAttackEffect(closestEnemy);
+            
+            // 데미지 적용
+            closestEnemy.takeDamage(this.attackDamage);
+            
+            // 속성별 추가 효과
+            this.applyElementEffect(closestEnemy);
+            
+            // 공격 시간 업데이트
+            this.lastAttackTime = this.scene.time.now;
+            this.isAttacking = true;
+        }
+    }
+    
+    // 공격 효과 생성
+    createAttackEffect(enemy) {
+        try {
+            // 속성에 따른 효과 색상
+            let color;
+            switch (this.element) {
+                case 'fire': color = 0xff5500; break;
+                case 'water': color = 0x00aaff; break;
+                case 'earth': color = 0xaa5500; break;
+                case 'air': color = 0x00ff00; break;
+                default: color = 0xff5500; break;
+            }
+            
+            // 플레이어와 적 사이의 각도
+            const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
+            
+            // 공격 효과 위치 (플레이어와 적 사이)
+            const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+            const effectX = this.x + Math.cos(angle) * (distance / 2);
+            const effectY = this.y + Math.sin(angle) * (distance / 2);
+            
+            // 공격 효과 생성
+            const effect = this.scene.add.circle(effectX, effectY, 20, color, 0.7);
+            effect.setDepth(this.depth + 1);
+            
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: effect,
+                scale: { from: 0.5, to: 1.5 },
+                alpha: { from: 0.7, to: 0 },
+                duration: 300,
+                onComplete: () => {
+                    if (effect && effect.active) {
+                        effect.destroy();
+                    }
+                }
+            });
+            
+            // 효과음 재생
+            try {
+                this.scene.sound.play('player_attack');
+            } catch (error) {
+                console.error('공격 효과음 재생 중 오류:', error);
+            }
+        } catch (error) {
+            console.error('공격 효과 생성 중 오류:', error);
+        }
+    }
+    
+    // 속성별 추가 효과
+    applyElementEffect(enemy) {
+        switch (this.element) {
+            case 'fire':
+                // 화상 효과 (시간당 추가 데미지)
+                if (!enemy.burning) {
+                    enemy.burning = true;
+                    
+                    // 화상 타이머 (3초간 매 초마다 데미지)
+                    const burnTimer = this.scene.time.addEvent({
+                        delay: 1000,
+                        callback: () => {
+                            if (enemy && enemy.active) {
+                                enemy.takeDamage(this.attackDamage * 0.2);
+                                this.createElementEffect(enemy.x, enemy.y, 0xff5500, 0.5);
+                            }
+                        },
+                        repeat: 2
+                    });
+                    
+                    // 화상 종료 후 상태 초기화
+                    this.scene.time.delayedCall(3000, () => {
+                        if (enemy && enemy.active) {
+                            enemy.burning = false;
+                        }
+                    });
+                }
+                break;
+                
+            case 'water':
+                // 둔화 효과 (이동 속도 감소)
+                if (!enemy.slowed) {
+                    enemy.slowed = true;
+                    
+                    // 원래 속도 저장
+                    const originalSpeed = enemy.speed;
+                    
+                    // 속도 감소
+                    enemy.speed *= 0.6;
+                    
+                    // 둔화 효과 표시
+                    this.createElementEffect(enemy.x, enemy.y, 0x00aaff, 0.5);
+                    
+                    // 둔화 종료 후 상태 초기화
+                    this.scene.time.delayedCall(2000, () => {
+                        if (enemy && enemy.active) {
+                            enemy.speed = originalSpeed;
+                            enemy.slowed = false;
+                        }
+                    });
+                }
+                break;
+                
+            case 'earth':
+                // 넉백 효과 (밀어내기)
+                const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
+                const knockbackForce = 200;
+                
+                enemy.body.setVelocity(
+                    Math.cos(angle) * knockbackForce,
+                    Math.sin(angle) * knockbackForce
+                );
+                
+                // 넉백 효과 표시
+                this.createElementEffect(enemy.x, enemy.y, 0xaa5500, 0.5);
+                break;
+                
+            case 'air':
+                // 다중 타격 효과 (주변 적에게 추가 데미지)
+                this.scene.enemies.getChildren().forEach(nearbyEnemy => {
+                    if (nearbyEnemy !== enemy && nearbyEnemy.active) {
+                        const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, nearbyEnemy.x, nearbyEnemy.y);
+                        
+                        if (distance < 100) {
+                            nearbyEnemy.takeDamage(this.attackDamage * 0.5);
+                            this.createElementEffect(nearbyEnemy.x, nearbyEnemy.y, 0x00ff00, 0.5);
+                        }
+                    }
+                });
+                break;
+        }
+    }
+    
+    // 속성 효과 생성
+    createElementEffect(x, y, color, alpha = 0.7) {
+        try {
+            // 효과 생성
+            const effect = this.scene.add.circle(x, y, 15, color, alpha);
+            effect.setDepth(this.depth + 1);
+            
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: effect,
+                scale: { from: 0.5, to: 1.2 },
+                alpha: { from: alpha, to: 0 },
+                duration: 500,
+                onComplete: () => {
+                    if (effect && effect.active) {
+                        effect.destroy();
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('속성 효과 생성 중 오류:', error);
+        }
     }
 }
 
