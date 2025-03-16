@@ -143,7 +143,7 @@ try {
             }
         },
         scale: {
-            mode: Phaser.Scale.RESIZE,
+            mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
             width: gameSize.width,
             height: gameSize.height
@@ -177,7 +177,8 @@ try {
     window.addEventListener('resize', () => {
         if (game.isBooted) {
             const newSize = calculateGameSize();
-            game.scale.resize(newSize.width, newSize.height);
+            // 스케일 모드가 FIT으로 변경되었으므로 resize 호출 방식 변경
+            game.scale.setGameSize(newSize.width, newSize.height);
             console.log(`게임 크기 조정: ${newSize.width}x${newSize.height}, UI 스케일: ${window.gameSettings.uiScale}`);
             if (typeof window.debugLog === 'function') {
                 window.debugLog(`게임 크기 조정: ${newSize.width}x${newSize.height}, UI 스케일: ${window.gameSettings.uiScale}`);
@@ -196,7 +197,8 @@ try {
         setTimeout(() => {
             if (game.isBooted) {
                 const newSize = calculateGameSize();
-                game.scale.resize(newSize.width, newSize.height);
+                // 스케일 모드가 FIT으로 변경되었으므로 resize 호출 방식 변경
+                game.scale.setGameSize(newSize.width, newSize.height);
                 console.log(`방향 변경 감지, 게임 크기 조정: ${newSize.width}x${newSize.height}`);
                 if (typeof window.debugLog === 'function') {
                     window.debugLog(`방향 변경 감지, 게임 크기 조정: ${newSize.width}x${newSize.height}`);
@@ -225,7 +227,8 @@ try {
     document.addEventListener('fullscreenchange', () => {
         if (game.isBooted) {
             const newSize = calculateGameSize();
-            game.scale.resize(newSize.width, newSize.height);
+            // 스케일 모드가 FIT으로 변경되었으므로 resize 호출 방식 변경
+            game.scale.setGameSize(newSize.width, newSize.height);
             console.log(`전체 화면 상태 변경, 게임 크기 조정: ${newSize.width}x${newSize.height}`);
             
             // 화면 크기 변경 이벤트 발생
