@@ -452,40 +452,67 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     }
     
     createImpactEffect(x, y, color) {
-        // 충돌 효과 생성
-        const impact = this.scene.add.circle(x, y, 20, color, 0.7);
-        impact.setDepth(this.depth + 1);
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
         
-        // 충돌 효과 애니메이션
-        this.scene.tweens.add({
-            targets: impact,
-            scale: { from: 0.5, to: 1.5 },
-            alpha: { from: 0.7, to: 0 },
-            duration: 300,
-            onComplete: () => {
-                impact.destroy();
-            }
-        });
+        try {
+            // 충돌 효과 생성
+            const impact = this.scene.add.circle(x, y, 20, color, 0.7);
+            impact.setDepth(this.depth + 1);
+            
+            // 충돌 효과 애니메이션
+            this.scene.tweens.add({
+                targets: impact,
+                scale: { from: 0.5, to: 1.5 },
+                alpha: { from: 0.7, to: 0 },
+                duration: 300,
+                onComplete: () => {
+                    if (impact && impact.active) {
+                        impact.destroy();
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('충돌 효과 생성 중 오류:', error);
+        }
     }
     
     createElementEffect(x, y, color, alpha = 0.7) {
-        // 속성 효과 생성
-        const effect = this.scene.add.circle(x, y, 15, color, alpha);
-        effect.setDepth(this.depth + 1);
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
         
-        // 효과 애니메이션
-        this.scene.tweens.add({
-            targets: effect,
-            scale: { from: 0.5, to: 1.2 },
-            alpha: { from: alpha, to: 0 },
-            duration: 500,
-            onComplete: () => {
-                effect.destroy();
-            }
-        });
+        try {
+            // 속성 효과 생성
+            const effect = this.scene.add.circle(x, y, 15, color, alpha);
+            effect.setDepth(this.depth + 1);
+            
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: effect,
+                scale: { from: 0.5, to: 1.2 },
+                alpha: { from: alpha, to: 0 },
+                duration: 500,
+                onComplete: () => {
+                    if (effect && effect.active) {
+                        effect.destroy();
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('속성 효과 생성 중 오류:', error);
+        }
     }
     
     useSpecialAbility() {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
         // 특수 능력 사용
         switch (this.element) {
             case 'fire':
@@ -504,117 +531,171 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
     }
     
     fireSpecialAbility() {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
         // 불 정령 특수 능력: 화염 폭발 (주변 모든 적에게 데미지)
         const explosionRadius = 200;
         
-        // 특수 능력 효과 생성
-        const explosion = this.scene.add.circle(this.x, this.y, explosionRadius, 0xff5500, 0.3);
-        
-        // 효과 애니메이션
-        this.scene.tweens.add({
-            targets: explosion,
-            alpha: 0,
-            duration: 1000,
-            onComplete: () => {
-                explosion.destroy();
-            }
-        });
-        
-        // 범위 내 모든 적에게 데미지
-        this.scene.enemies.getChildren().forEach(enemy => {
-            const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+        try {
+            // 특수 능력 효과 생성
+            const explosion = this.scene.add.circle(this.x, this.y, explosionRadius, 0xff5500, 0.3);
             
-            if (distance < explosionRadius) {
-                enemy.takeDamage(this.damage * 2);
-                
-                // 화상 효과
-                this.createElementEffect(enemy.x, enemy.y, 0xff5500);
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: explosion,
+                alpha: 0,
+                duration: 1000,
+                onComplete: () => {
+                    if (explosion && explosion.active) {
+                        explosion.destroy();
+                    }
+                }
+            });
+            
+            // 범위 내 모든 적에게 데미지
+            if (this.scene.enemies) {
+                this.scene.enemies.getChildren().forEach(enemy => {
+                    if (enemy && enemy.active) {
+                        const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+                        
+                        if (distance < explosionRadius) {
+                            enemy.takeDamage(this.damage * 2);
+                            
+                            // 화상 효과
+                            this.createElementEffect(enemy.x, enemy.y, 0xff5500);
+                        }
+                    }
+                });
             }
-        });
+        } catch (error) {
+            console.error('화염 폭발 특수 능력 사용 중 오류:', error);
+        }
     }
     
     waterSpecialAbility() {
-        // 물 정령 특수 능력: 치유의 물결 (플레이어 체력 회복)
-        const healAmount = this.level * 5;
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active || !this.scene.player) {
+            return;
+        }
         
-        // 특수 능력 효과 생성
-        const healWave = this.scene.add.circle(this.scene.player.x, this.scene.player.y, 100, 0x00aaff, 0.3);
-        
-        // 효과 애니메이션
-        this.scene.tweens.add({
-            targets: healWave,
-            scale: 2,
-            alpha: 0,
-            duration: 1000,
-            onComplete: () => {
-                healWave.destroy();
-            }
-        });
-        
-        // 플레이어 체력 회복
-        this.scene.player.heal(healAmount);
+        try {
+            // 물 정령 특수 능력: 치유의 물결 (플레이어 체력 회복)
+            const healAmount = this.level * 5;
+            
+            // 특수 능력 효과 생성
+            const healWave = this.scene.add.circle(this.scene.player.x, this.scene.player.y, 100, 0x00aaff, 0.3);
+            
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: healWave,
+                scale: 2,
+                alpha: 0,
+                duration: 1000,
+                onComplete: () => {
+                    if (healWave && healWave.active) {
+                        healWave.destroy();
+                    }
+                }
+            });
+            
+            // 플레이어 체력 회복
+            this.scene.player.heal(healAmount);
+        } catch (error) {
+            console.error('치유의 물결 특수 능력 사용 중 오류:', error);
+        }
     }
     
     earthSpecialAbility() {
-        // 땅 정령 특수 능력: 대지의 보호막 (플레이어 일시적 무적)
-        const shieldDuration = 5000; // 5초
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active || !this.scene.player) {
+            return;
+        }
         
-        // 특수 능력 효과 생성
-        const shield = this.scene.add.circle(this.scene.player.x, this.scene.player.y, 50, 0xaa5500, 0.3);
-        
-        // 효과 애니메이션
-        this.scene.tweens.add({
-            targets: shield,
-            alpha: 0.5,
-            duration: 500,
-            yoyo: true,
-            repeat: 9
-        });
-        
-        // 플레이어 무적 상태 설정
-        this.scene.player.invulnerable = true;
-        
-        // 무적 상태 종료 타이머
-        this.scene.time.delayedCall(shieldDuration, () => {
-            this.scene.player.invulnerable = false;
-            shield.destroy();
-        });
+        try {
+            // 땅 정령 특수 능력: 대지의 보호막 (플레이어 일시적 무적)
+            const shieldDuration = 5000; // 5초
+            
+            // 특수 능력 효과 생성
+            const shield = this.scene.add.circle(this.scene.player.x, this.scene.player.y, 50, 0xaa5500, 0.3);
+            
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: shield,
+                alpha: 0.5,
+                duration: 500,
+                yoyo: true,
+                repeat: 9
+            });
+            
+            // 플레이어 무적 상태 설정
+            this.scene.player.invulnerable = true;
+            
+            // 무적 상태 종료 타이머
+            this.scene.time.delayedCall(shieldDuration, () => {
+                if (this.scene && this.scene.player && this.scene.player.active) {
+                    this.scene.player.invulnerable = false;
+                }
+                if (shield && shield.active) {
+                    shield.destroy();
+                }
+            });
+        } catch (error) {
+            console.error('대지의 보호막 특수 능력 사용 중 오류:', error);
+        }
     }
     
     windSpecialAbility() {
-        // 바람 정령 특수 능력: 회오리 바람 (모든 적을 밀어냄)
-        const pushRadius = 300;
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
         
-        // 특수 능력 효과 생성
-        const windCircle = this.scene.add.circle(this.x, this.y, pushRadius, 0x00ff00, 0.3);
-        
-        // 효과 애니메이션
-        this.scene.tweens.add({
-            targets: windCircle,
-            scale: 2,
-            alpha: 0,
-            duration: 1000,
-            onComplete: () => {
-                windCircle.destroy();
-            }
-        });
-        
-        // 범위 내 모든 적 밀어내기
-        this.scene.enemies.getChildren().forEach(enemy => {
-            const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+        try {
+            // 바람 정령 특수 능력: 회오리 바람 (모든 적을 밀어냄)
+            const pushRadius = 300;
             
-            if (distance < pushRadius) {
-                const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
-                const pushX = Math.cos(angle) * 200;
-                const pushY = Math.sin(angle) * 200;
-                
-                enemy.x += pushX;
-                enemy.y += pushY;
-                
-                // 밀어내기 효과
-                this.createElementEffect(enemy.x, enemy.y, 0x00ff00);
+            // 특수 능력 효과 생성
+            const windCircle = this.scene.add.circle(this.x, this.y, pushRadius, 0x00ff00, 0.3);
+            
+            // 효과 애니메이션
+            this.scene.tweens.add({
+                targets: windCircle,
+                scale: 2,
+                alpha: 0,
+                duration: 1000,
+                onComplete: () => {
+                    if (windCircle && windCircle.active) {
+                        windCircle.destroy();
+                    }
+                }
+            });
+            
+            // 범위 내 모든 적 밀어내기
+            if (this.scene.enemies) {
+                this.scene.enemies.getChildren().forEach(enemy => {
+                    if (enemy && enemy.active) {
+                        const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
+                        
+                        if (distance < pushRadius) {
+                            const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
+                            const pushX = Math.cos(angle) * 200;
+                            const pushY = Math.sin(angle) * 200;
+                            
+                            enemy.x += pushX;
+                            enemy.y += pushY;
+                            
+                            // 밀어내기 효과
+                            this.createElementEffect(enemy.x, enemy.y, 0x00ff00);
+                        }
+                    }
+                });
             }
-        });
+        } catch (error) {
+            console.error('회오리 바람 특수 능력 사용 중 오류:', error);
+        }
     }
 
     upgrade() {
@@ -660,6 +741,23 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
                 effect.destroy();
             }
         });
+    }
+    
+    // 정령 파괴 시 타이머 정리
+    destroy(fromScene) {
+        // 타이머 제거
+        if (this.attackTimer) {
+            this.attackTimer.remove();
+            this.attackTimer = null;
+        }
+        
+        if (this.specialAbilityTimer) {
+            this.specialAbilityTimer.remove();
+            this.specialAbilityTimer = null;
+        }
+        
+        // 부모 클래스의 destroy 호출
+        super.destroy(fromScene);
     }
 }
 
