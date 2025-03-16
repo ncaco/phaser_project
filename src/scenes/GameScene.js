@@ -938,18 +938,35 @@ class GameScene extends Phaser.Scene {
     }
     
     handlePlayerItemCollision(player, item) {
-        // 아이템 효과 적용
-        item.applyEffect(player);
-        
-        // 아이템 제거
-        item.destroy();
-        
-        // 성취 시스템 업데이트
-        this.achievementSystem.updateAchievements('itemCollected');
-        
-        // 정령 아이템인 경우 정령 수집 성취 업데이트
-        if (item.type === 'spirit') {
-            this.achievementSystem.updateAchievements('spiritCollected');
+        try {
+            // 플레이어나 아이템이 유효하지 않으면 무시
+            if (!player || !player.active || !item || !item.active) {
+                return;
+            }
+            
+            // 아이템 효과 적용
+            if (typeof item.applyEffect === 'function') {
+                item.applyEffect(player);
+            } else {
+                console.error('아이템에 applyEffect 메서드가 없습니다:', item);
+            }
+            
+            // 아이템 제거
+            if (item.active) {
+                item.destroy();
+            }
+            
+            // 성취 시스템 업데이트
+            if (this.achievementSystem) {
+                this.achievementSystem.updateAchievements('itemCollected');
+                
+                // 정령 아이템인 경우 정령 수집 성취 업데이트
+                if (item.type === 'spirit') {
+                    this.achievementSystem.updateAchievements('spiritCollected');
+                }
+            }
+        } catch (error) {
+            console.error('아이템 충돌 처리 중 오류 발생:', error);
         }
     }
     

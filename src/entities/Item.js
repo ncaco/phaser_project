@@ -372,192 +372,206 @@ class Item extends Phaser.Physics.Arcade.Sprite {
     }
     
     applyEffect(player) {
-        // 아이템 효과 적용
-        switch (this.type) {
-            case 'health':
-                player.heal(this.value);
-                this.createEffectText(`+${this.value} 체력`, 0xff0000);
-                break;
-                
-            case 'exp':
-                player.addExperience(this.value);
-                this.createEffectText(`+${this.value} 경험치`, 0x00ffff);
-                break;
-                
-            case 'spirit':
-                // 랜덤 정령 타입 선택
-                const spiritTypes = ['기본 정령', '불 정령', '물 정령', '바람 정령', '땅 정령', '번개 정령', '얼음 정령', '빛 정령'];
-                const weights = [0.25, 0.15, 0.15, 0.12, 0.1, 0.08, 0.08, 0.07]; // 가중치
-                
-                // 가중치에 따른 랜덤 선택
-                let random = Math.random();
-                let cumulativeWeight = 0;
-                let selectedType = spiritTypes[0];
-                
-                for (let i = 0; i < spiritTypes.length; i++) {
-                    cumulativeWeight += weights[i];
-                    if (random <= cumulativeWeight) {
-                        selectedType = spiritTypes[i];
-                        break;
+        try {
+            // 플레이어가 유효하지 않으면 리턴
+            if (!player || !player.active || !this.scene) {
+                console.error('유효하지 않은 플레이어에게 아이템 효과를 적용할 수 없습니다.');
+                return;
+            }
+            
+            // 아이템 효과 적용
+            switch (this.type) {
+                case 'health':
+                    player.heal(this.value);
+                    this.createEffectText(`+${this.value} 체력`, 0xff0000);
+                    break;
+                    
+                case 'exp':
+                    player.addExperience(this.value);
+                    this.createEffectText(`+${this.value} 경험치`, 0x00ffff);
+                    break;
+                    
+                case 'spirit':
+                    // 랜덤 정령 타입 선택
+                    const spiritTypes = ['기본 정령', '불 정령', '물 정령', '바람 정령', '땅 정령', '번개 정령', '얼음 정령', '빛 정령'];
+                    const weights = [0.25, 0.15, 0.15, 0.12, 0.1, 0.08, 0.08, 0.07]; // 가중치
+                    
+                    // 가중치에 따른 랜덤 선택
+                    let random = Math.random();
+                    let cumulativeWeight = 0;
+                    let selectedType = spiritTypes[0];
+                    
+                    for (let i = 0; i < spiritTypes.length; i++) {
+                        cumulativeWeight += weights[i];
+                        if (random <= cumulativeWeight) {
+                            selectedType = spiritTypes[i];
+                            break;
+                        }
                     }
-                }
-                
-                // 희귀도가 높을수록 더 좋은 정령 확률 증가
-                if (this.rarity === 'rare' && Math.random() < 0.5) {
-                    // 희귀: 바람 정령 이상의 정령 확률 증가
-                    const rareIndex = Math.floor(Math.random() * 5) + 3; // 3~7 (바람~빛)
-                    selectedType = spiritTypes[Math.min(rareIndex, spiritTypes.length - 1)];
-                } else if (this.rarity === 'epic' && Math.random() < 0.7) {
-                    // 에픽: 땅 정령 이상의 정령 확률 증가
-                    const epicIndex = Math.floor(Math.random() * 4) + 4; // 4~7 (땅~빛)
-                    selectedType = spiritTypes[Math.min(epicIndex, spiritTypes.length - 1)];
-                } else if (this.rarity === 'legendary') {
-                    // 전설: 번개, 얼음, 빛 정령 중 하나
-                    const legendaryIndex = Math.floor(Math.random() * 3) + 5; // 5~7 (번개~빛)
-                    selectedType = spiritTypes[legendaryIndex];
-                }
-                
-                // 난이도에 따른 정령 타입 조정
-                if (this.scene.difficulty === 'easy' && Math.random() < 0.3) {
-                    // 쉬움: 더 좋은 정령이 나올 확률 증가
-                    const betterIndex = Math.min(spiritTypes.indexOf(selectedType) + 1, spiritTypes.length - 1);
-                    selectedType = spiritTypes[betterIndex];
-                } else if (this.scene.difficulty === 'hard' && Math.random() < 0.3) {
-                    // 어려움: 더 낮은 등급의 정령이 나올 확률 증가
-                    const worseIndex = Math.max(spiritTypes.indexOf(selectedType) - 1, 0);
-                    selectedType = spiritTypes[worseIndex];
-                }
-                
-                player.addSpirit(selectedType);
-                
-                // 정령 타입에 따른 색상 설정
-                let textColor = 0xffff00; // 기본 노란색
-                switch (selectedType) {
-                    case '불 정령':
-                        textColor = 0xff5500;
-                        break;
-                    case '물 정령':
-                        textColor = 0x00aaff;
-                        break;
-                    case '바람 정령':
-                        textColor = 0x00ff00;
-                        break;
-                    case '땅 정령':
-                        textColor = 0xaa5500;
-                        break;
-                    case '번개 정령':
-                        textColor = 0xffff00;
-                        break;
-                    case '얼음 정령':
-                        textColor = 0x00ffff;
-                        break;
-                    case '빛 정령':
-                        textColor = 0xffffaa;
-                        break;
-                }
-                
-                this.createEffectText(`새로운 ${selectedType}!`, textColor);
-                break;
-                
-            case 'upgrade':
-                // 랜덤 정령 업그레이드
-                if (player.spirits.length > 0) {
-                    const spiritIndex = Math.floor(Math.random() * player.spirits.length);
-                    player.upgradeSpirit(spiritIndex);
                     
-                    const spiritName = player.spirits[spiritIndex].name;
-                    this.createEffectText(`${spiritName} 강화!`, 0xff00ff);
-                }
-                break;
-                
-            case 'speed':
-                // 이동속도 증가 (일시적)
-                const originalSpeed = player.speed;
-                player.speed += player.speed * (this.value / 100);
-                
-                // 효과 지속 시간 (희귀도에 따라 증가)
-                const duration = 5000 + (this.getRarityValue() * 5000);
-                
-                this.createEffectText(`이동속도 +${this.value}%`, 0x00ff00);
-                
-                // 지속 시간 후 원래 속도로 복구
-                this.scene.time.delayedCall(duration, () => {
-                    player.speed = originalSpeed;
-                });
-                break;
-                
-            case 'shield':
-                // 보호막 생성 (일시적 무적)
-                player.invulnerable = true;
-                
-                // 보호막 시각 효과
-                const shield = this.scene.add.circle(player.x, player.y, 50, 0x0000ff, 0.3);
-                shield.setDepth(player.depth - 1);
-                
-                // 보호막이 플레이어를 따라다니도록
-                const shieldFollowEvent = this.scene.time.addEvent({
-                    delay: 10,
-                    callback: () => {
-                        shield.x = player.x;
-                        shield.y = player.y;
-                    },
-                    loop: true
-                });
-                
-                // 효과 지속 시간
-                const shieldDuration = this.value * 1000;
-                
-                this.createEffectText(`보호막 ${this.value}초`, 0x0000ff);
-                
-                // 지속 시간 후 보호막 제거
-                this.scene.time.delayedCall(shieldDuration, () => {
-                    player.invulnerable = false;
-                    shield.destroy();
-                    shieldFollowEvent.remove();
-                });
-                break;
-                
-            case 'damage':
-                // 모든 정령 공격력 증가
-                player.spirits.forEach(spirit => {
-                    spirit.damage += this.value;
-                });
-                
-                this.createEffectText(`공격력 +${this.value}`, 0xff8800);
-                break;
-                
-            case 'attackSpeed':
-                // 모든 정령 공격 속도 증가
-                player.spirits.forEach(spirit => {
-                    // 공격 속도는 밀리초 단위이므로 감소시켜야 함
-                    const speedIncrease = spirit.attackSpeed * (this.value / 100);
-                    spirit.attackSpeed = Math.max(200, spirit.attackSpeed - speedIncrease);
+                    // 희귀도가 높을수록 더 좋은 정령 확률 증가
+                    if (this.rarity === 'rare' && Math.random() < 0.5) {
+                        // 희귀: 바람 정령 이상의 정령 확률 증가
+                        const rareIndex = Math.floor(Math.random() * 5) + 3; // 3~7 (바람~빛)
+                        selectedType = spiritTypes[Math.min(rareIndex, spiritTypes.length - 1)];
+                    } else if (this.rarity === 'epic' && Math.random() < 0.7) {
+                        // 에픽: 땅 정령 이상의 정령 확률 증가
+                        const epicIndex = Math.floor(Math.random() * 4) + 4; // 4~7 (땅~빛)
+                        selectedType = spiritTypes[Math.min(epicIndex, spiritTypes.length - 1)];
+                    } else if (this.rarity === 'legendary') {
+                        // 전설: 번개, 얼음, 빛 정령 중 하나
+                        const legendaryIndex = Math.floor(Math.random() * 3) + 5; // 5~7 (번개~빛)
+                        selectedType = spiritTypes[legendaryIndex];
+                    }
                     
-                    // 공격 타이머 업데이트
-                    spirit.attackTimer.reset({
-                        delay: spirit.attackSpeed,
-                        callback: spirit.attack,
-                        callbackScope: spirit,
+                    // 난이도에 따른 정령 타입 조정
+                    if (this.scene.difficulty === 'easy' && Math.random() < 0.3) {
+                        // 쉬움: 더 좋은 정령이 나올 확률 증가
+                        const betterIndex = Math.min(spiritTypes.indexOf(selectedType) + 1, spiritTypes.length - 1);
+                        selectedType = spiritTypes[betterIndex];
+                    } else if (this.scene.difficulty === 'hard' && Math.random() < 0.3) {
+                        // 어려움: 더 낮은 등급의 정령이 나올 확률 증가
+                        const worseIndex = Math.max(spiritTypes.indexOf(selectedType) - 1, 0);
+                        selectedType = spiritTypes[worseIndex];
+                    }
+                    
+                    // 정령 추가
+                    if (typeof player.addSpirit === 'function') {
+                        player.addSpirit(selectedType);
+                    } else {
+                        console.error('플레이어에 addSpirit 메서드가 없습니다.');
+                    }
+                    
+                    // 정령 타입에 따른 색상 설정
+                    let textColor = 0xffff00; // 기본 노란색
+                    switch (selectedType) {
+                        case '불 정령':
+                            textColor = 0xff5500;
+                            break;
+                        case '물 정령':
+                            textColor = 0x00aaff;
+                            break;
+                        case '바람 정령':
+                            textColor = 0x00ff00;
+                            break;
+                        case '땅 정령':
+                            textColor = 0xaa5500;
+                            break;
+                        case '번개 정령':
+                            textColor = 0xffff00;
+                            break;
+                        case '얼음 정령':
+                            textColor = 0x00ffff;
+                            break;
+                        case '빛 정령':
+                            textColor = 0xffffaa;
+                            break;
+                    }
+                    
+                    this.createEffectText(`새로운 ${selectedType}!`, textColor);
+                    break;
+                    
+                case 'upgrade':
+                    // 랜덤 정령 업그레이드
+                    if (player.spirits.length > 0) {
+                        const spiritIndex = Math.floor(Math.random() * player.spirits.length);
+                        player.upgradeSpirit(spiritIndex);
+                        
+                        const spiritName = player.spirits[spiritIndex].name;
+                        this.createEffectText(`${spiritName} 강화!`, 0xff00ff);
+                    }
+                    break;
+                    
+                case 'speed':
+                    // 이동속도 증가 (일시적)
+                    const originalSpeed = player.speed;
+                    player.speed += player.speed * (this.value / 100);
+                    
+                    // 효과 지속 시간 (희귀도에 따라 증가)
+                    const duration = 5000 + (this.getRarityValue() * 5000);
+                    
+                    this.createEffectText(`이동속도 +${this.value}%`, 0x00ff00);
+                    
+                    // 지속 시간 후 원래 속도로 복구
+                    this.scene.time.delayedCall(duration, () => {
+                        player.speed = originalSpeed;
+                    });
+                    break;
+                    
+                case 'shield':
+                    // 보호막 생성 (일시적 무적)
+                    player.invulnerable = true;
+                    
+                    // 보호막 시각 효과
+                    const shield = this.scene.add.circle(player.x, player.y, 50, 0x0000ff, 0.3);
+                    shield.setDepth(player.depth - 1);
+                    
+                    // 보호막이 플레이어를 따라다니도록
+                    const shieldFollowEvent = this.scene.time.addEvent({
+                        delay: 10,
+                        callback: () => {
+                            shield.x = player.x;
+                            shield.y = player.y;
+                        },
                         loop: true
                     });
-                });
-                
-                this.createEffectText(`공격속도 +${this.value}%`, 0x88ff00);
-                break;
-        }
-        
-        // 효과음 재생
-        try {
-            this.scene.sound.play('item_pickup');
+                    
+                    // 효과 지속 시간
+                    const shieldDuration = this.value * 1000;
+                    
+                    this.createEffectText(`보호막 ${this.value}초`, 0x0000ff);
+                    
+                    // 지속 시간 후 보호막 제거
+                    this.scene.time.delayedCall(shieldDuration, () => {
+                        player.invulnerable = false;
+                        shield.destroy();
+                        shieldFollowEvent.remove();
+                    });
+                    break;
+                    
+                case 'damage':
+                    // 모든 정령 공격력 증가
+                    player.spirits.forEach(spirit => {
+                        spirit.damage += this.value;
+                    });
+                    
+                    this.createEffectText(`공격력 +${this.value}`, 0xff8800);
+                    break;
+                    
+                case 'attackSpeed':
+                    // 모든 정령 공격 속도 증가
+                    player.spirits.forEach(spirit => {
+                        // 공격 속도는 밀리초 단위이므로 감소시켜야 함
+                        const speedIncrease = spirit.attackSpeed * (this.value / 100);
+                        spirit.attackSpeed = Math.max(200, spirit.attackSpeed - speedIncrease);
+                        
+                        // 공격 타이머 업데이트
+                        spirit.attackTimer.reset({
+                            delay: spirit.attackSpeed,
+                            callback: spirit.attack,
+                            callbackScope: spirit,
+                            loop: true
+                        });
+                    });
+                    
+                    this.createEffectText(`공격속도 +${this.value}%`, 0x88ff00);
+                    break;
+            }
+            
+            // 효과음 재생
+            try {
+                if (this.scene && this.scene.sound) {
+                    this.scene.sound.play('item_pickup');
+                }
+            } catch (error) {
+                console.error('아이템 획득 효과음 재생 중 오류:', error);
+            }
+            
+            // 획득 효과
+            this.createPickupEffect();
         } catch (error) {
-            console.error('아이템 획득 효과음 재생 중 오류:', error);
+            console.error('아이템 효과 적용 중 오류 발생:', error);
         }
-        
-        // 획득 효과
-        this.createPickupEffect();
-        
-        // 아이템 제거
-        this.destroy();
     }
     
     createEffectText(text, color) {

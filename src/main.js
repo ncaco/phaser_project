@@ -229,6 +229,15 @@ try {
             // 화면 크기 변경 이벤트 발생
             if (game.events) {
                 game.events.emit('resize', newSize.width, newSize.height, window.gameSettings.uiScale);
+                
+                // 현재 활성화된 씬에 resize 이벤트 직접 전달
+                const activeScene = game.scene.getScenes(true)[0];
+                if (activeScene && typeof activeScene.handleResize === 'function') {
+                    activeScene.handleResize({
+                        width: newSize.width,
+                        height: newSize.height
+                    });
+                }
             }
         }
     });

@@ -517,7 +517,17 @@ class MainMenuScene extends Phaser.Scene {
         const buttonObj = {
             background: button,
             text: buttonText,
-            selectedIndicator: selectedIndicator
+            selectedIndicator: selectedIndicator,
+            setPosition: (newX, newY) => {
+                button.setPosition(newX, newY);
+                buttonText.setPosition(newX, newY);
+                selectedIndicator.setPosition(newX, newY);
+            },
+            setScale: (scale) => {
+                button.setScale(scale);
+                buttonText.setScale(scale);
+                selectedIndicator.setScale(scale);
+            }
         };
         
         return buttonObj;
