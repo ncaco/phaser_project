@@ -64,14 +64,14 @@ try {
             // 모바일 환경에서는 UI 요소를 더 크게 표시
             if (this.isMobile) {
                 scale = Math.max(scale, 0.8); // 최소 스케일 보장
-                return scale * 1.3; // 모바일에서는 30% 더 크게
+                return scale * 1.2; // 모바일에서는 20% 더 크게 (30%에서 20%로 조정)
             }
             
             return scale;
         },
         get fontSizeBase() {
             // 기본 폰트 크기 계산
-            return this.isMobile ? 18 : 16; // 모바일에서는 기본 폰트 크기를 더 크게
+            return this.isMobile ? 16 : 14; // 모바일에서는 기본 폰트 크기를 더 크게 (조정됨)
         },
         debug: false
     };

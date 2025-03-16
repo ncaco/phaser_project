@@ -95,19 +95,24 @@ class GameScene extends Phaser.Scene {
         this.background = this.add.tileSprite(0, 0, this.cameras.main.width, this.cameras.main.height, 'background');
         this.background.setOrigin(0, 0);
         this.background.setScrollFactor(0);
+        this.background.setDepth(-10); // 배경 깊이 설정
         
         // 바닥 타일 생성
         this.groundTiles = [];
         
         const tileSize = window.getScaledValue(128);
-        const tilesX = Math.ceil(this.cameras.main.width / tileSize) + 2;
-        const tilesY = Math.ceil(this.cameras.main.height / tileSize) + 2;
+        const mapWidth = 2000; // 맵 너비
+        const mapHeight = 2000; // 맵 높이
         
-        for (let y = -1; y < tilesY; y++) {
-            for (let x = -1; x < tilesX; x++) {
+        // 화면에 필요한 타일만 생성
+        const tilesX = Math.ceil(mapWidth / tileSize);
+        const tilesY = Math.ceil(mapHeight / tileSize);
+        
+        for (let y = 0; y < tilesY; y++) {
+            for (let x = 0; x < tilesX; x++) {
                 const tile = this.add.image(x * tileSize, y * tileSize, 'ground_tile');
                 tile.setOrigin(0, 0);
-                tile.setDepth(-1);
+                tile.setDepth(-5); // 바닥 타일 깊이 설정
                 this.groundTiles.push(tile);
             }
         }
@@ -214,10 +219,18 @@ class GameScene extends Phaser.Scene {
     
     setupCamera() {
         // 카메라 설정
-        this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
+        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
         this.cameras.main.setZoom(1);
-        this.cameras.main.setLerp(0.05, 0.05); // 부드러운 카메라 이동
-        this.cameras.main.setDeadzone(50, 50); // 데드존 추가
+        this.cameras.main.setLerp(0.1, 0.1); // 부드러운 카메라 이동 (값 조정)
+        this.cameras.main.setDeadzone(100, 100); // 데드존 확대
+        
+        // 카메라 경계 설정
+        const mapWidth = 2000; // 맵 너비
+        const mapHeight = 2000; // 맵 높이
+        this.cameras.main.setBounds(0, 0, mapWidth, mapHeight);
+        
+        // 월드 경계 설정
+        this.physics.world.setBounds(0, 0, mapWidth, mapHeight);
     }
     
     createUI() {
