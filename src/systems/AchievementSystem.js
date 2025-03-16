@@ -49,7 +49,7 @@ class AchievementSystem {
                 completed: false,
                 reward: {
                     type: 'exp',
-                    value: 50
+                    value: 100
                 }
             },
             {
@@ -92,7 +92,7 @@ class AchievementSystem {
                 id: 'survive_5_minutes',
                 name: '생존자',
                 description: '5분 동안 생존하기',
-                requirement: 5 * 60, // 초 단위
+                requirement: 300, // 초 단위
                 progress: 0,
                 completed: false,
                 reward: {
@@ -150,6 +150,9 @@ class AchievementSystem {
             }
         ];
         
+        // 로컬 스토리지에서 업적 데이터 불러오기
+        this.loadAchievements();
+        
         // 성취 UI
         this.achievementUI = null;
         this.achievementNotifications = [];
@@ -159,6 +162,46 @@ class AchievementSystem {
         
         // 성취 알림 대기열
         this.notificationQueue = [];
+        this.notificationActive = false;
+    }
+    
+    // 업적 데이터 저장
+    saveAchievements() {
+        try {
+            const achievementsData = this.achievements.map(achievement => ({
+                id: achievement.id,
+                progress: achievement.progress,
+                completed: achievement.completed
+            }));
+            
+            localStorage.setItem('achievements', JSON.stringify(achievementsData));
+            console.log('업적 데이터 저장 완료');
+        } catch (error) {
+            console.error('업적 데이터 저장 중 오류 발생:', error);
+        }
+    }
+    
+    // 업적 데이터 불러오기
+    loadAchievements() {
+        try {
+            const savedData = localStorage.getItem('achievements');
+            if (savedData) {
+                const achievementsData = JSON.parse(savedData);
+                
+                // 저장된 데이터로 업적 업데이트
+                achievementsData.forEach(savedAchievement => {
+                    const achievement = this.achievements.find(a => a.id === savedAchievement.id);
+                    if (achievement) {
+                        achievement.progress = savedAchievement.progress;
+                        achievement.completed = savedAchievement.completed;
+                    }
+                });
+                
+                console.log('업적 데이터 불러오기 완료');
+            }
+        } catch (error) {
+            console.error('업적 데이터 불러오기 중 오류 발생:', error);
+        }
     }
     
     // 성취 진행도 업데이트
@@ -174,6 +217,9 @@ class AchievementSystem {
             achievement.completed = true;
             this.completeAchievement(achievement);
         }
+        
+        // 업적 데이터 저장
+        this.saveAchievements();
     }
     
     // 성취 완료 처리
@@ -332,6 +378,7 @@ class AchievementSystem {
             this.scene.cameras.main.width / 2,
             this.scene.cameras.main.height / 2
         );
+        this.achievementUI.setDepth(1000); // 높은 z-index로 설정하여 다른 UI 위에 표시
         
         // 배경 패널
         const background = this.scene.add.rectangle(
@@ -344,9 +391,11 @@ class AchievementSystem {
         // 제목
         const title = this.scene.add.text(
             0, -180,
-            '성취 목록',
+            '업적 목록',
             {
-                font: '24px Arial',
+                fontFamily: 'Noto Sans KR, Arial, sans-serif',
+                fontSize: '24px',
+                fontWeight: 'bold',
                 fill: '#ffffff'
             }
         ).setOrigin(0.5);
@@ -366,7 +415,8 @@ class AchievementSystem {
             280, -180,
             'X',
             {
-                font: '20px Arial',
+                fontFamily: 'Noto Sans KR, Arial, sans-serif',
+                fontSize: '20px',
                 fill: '#ffffff'
             }
         ).setOrigin(0.5);
@@ -389,7 +439,9 @@ class AchievementSystem {
                 -250, yPos,
                 achievement.name,
                 {
-                    font: '16px Arial',
+                    fontFamily: 'Noto Sans KR, Arial, sans-serif',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
                     fill: achievement.completed ? '#00ff00' : '#ffffff'
                 }
             ).setOrigin(0, 0.5);
@@ -399,59 +451,62 @@ class AchievementSystem {
                 -100, yPos,
                 achievement.description,
                 {
-                    font: '14px Arial',
-                    fill: '#aaaaaa'
+                    fontFamily: 'Noto Sans KR, Arial, sans-serif',
+                    fontSize: '14px',
+                    fill: '#cccccc'
                 }
             ).setOrigin(0, 0.5);
             
-            // 진행도
+            // 성취 진행 상황
             const progressText = this.scene.add.text(
                 200, yPos,
                 `${achievement.progress}/${achievement.requirement}`,
                 {
-                    font: '14px Arial',
-                    fill: '#ffff00'
+                    fontFamily: 'Noto Sans KR, Arial, sans-serif',
+                    fontSize: '14px',
+                    fill: achievement.completed ? '#00ff00' : '#ffffff'
                 }
+            ).setOrigin(0.5);
+            
+            // 진행 바 배경
+            const progressBarBg = this.scene.add.rectangle(
+                200, yPos + 15,
+                100, 5,
+                0x333333, 1
+            );
+            
+            // 진행 바
+            const progressRatio = Math.min(achievement.progress / achievement.requirement, 1);
+            const progressBar = this.scene.add.rectangle(
+                200 - 50 + (progressRatio * 100) / 2, yPos + 15,
+                progressRatio * 100, 5,
+                achievement.completed ? 0x00ff00 : 0x3498db, 1
             ).setOrigin(0.5);
             
             // 보상 정보
             let rewardText = '';
-            switch (achievement.reward.type) {
-                case 'exp':
-                    rewardText = `경험치 +${achievement.reward.value}`;
-                    break;
-                case 'spirit':
-                    rewardText = `${achievement.reward.value}`;
-                    break;
-                case 'health':
-                    rewardText = `체력 +${achievement.reward.value}`;
-                    break;
-                case 'maxHealth':
-                    rewardText = `최대 체력 +${achievement.reward.value}`;
-                    break;
-                case 'damage':
-                    rewardText = `공격력 +${achievement.reward.value}`;
-                    break;
+            if (achievement.reward.type === 'exp') {
+                rewardText = `경험치 +${achievement.reward.value}`;
+            } else if (achievement.reward.type === 'spirit') {
+                rewardText = `${achievement.reward.value} 획득`;
             }
             
-            const rewardInfo = this.scene.add.text(
+            const rewardInfoText = this.scene.add.text(
                 250, yPos,
                 rewardText,
                 {
-                    font: '14px Arial',
-                    fill: '#00ffff'
+                    fontFamily: 'Noto Sans KR, Arial, sans-serif',
+                    fontSize: '12px',
+                    fill: '#ffcc00'
                 }
             ).setOrigin(0, 0.5);
             
-            achievementItems.push(itemBg, nameText, descText, progressText, rewardInfo);
+            achievementItems.push(itemBg, nameText, descText, progressText, progressBarBg, progressBar, rewardInfoText);
             yPos += 45;
         });
         
         // UI에 모든 요소 추가
         this.achievementUI.add([background, title, closeButton, closeText, ...achievementItems]);
-        
-        // UI를 최상위 레이어에 표시
-        this.achievementUI.setDepth(1000);
     }
     
     // 성취 UI 숨기기

@@ -37,71 +37,111 @@ class PreloadScene extends Phaser.Scene {
             this.logDebug('로딩 바 생성 시작');
             
             // 배경색 설정
-            this.cameras.main.setBackgroundColor('#2c3e50');
+            this.cameras.main.setBackgroundColor('#1e2a3a');
             
-            // 로딩 텍스트
-            const loadingText = this.add.text(
-                this.cameras.main.width / 2,
-                this.cameras.main.height / 2 - 50,
-                '로딩 중...',
-                {
-                    font: '24px Arial',
-                    fill: '#ffffff'
-                }
-            ).setOrigin(0.5);
+            // HTML 로딩 화면 요소 가져오기
+            const loadingScreen = document.getElementById('loading-screen');
+            const loadingBar = document.getElementById('loading-bar');
             
-            // 로딩 바 배경
-            const progressBarBg = this.add.graphics();
-            progressBarBg.fillStyle(0x222222, 0.8);
-            progressBarBg.fillRect(
-                this.cameras.main.width / 2 - 160,
-                this.cameras.main.height / 2,
-                320,
-                30
-            );
-            
-            // 로딩 바
-            const progressBar = this.add.graphics();
-            
-            // 로딩 진행 상황 이벤트
-            this.load.on('progress', (value) => {
-                try {
-                    // 로딩 바 업데이트
-                    progressBar.clear();
-                    progressBar.fillStyle(0x00ff00, 1);
-                    progressBar.fillRect(
-                        this.cameras.main.width / 2 - 150,
-                        this.cameras.main.height / 2 + 5,
-                        300 * value,
-                        20
-                    );
-                    
-                    // 퍼센트 표시
-                    const percent = Math.floor(value * 100);
-                    loadingText.setText('로딩 중... ' + percent + '%');
-                    
-                    // 로그
-                    if (percent % 20 === 0) {
-                        this.logDebug('로딩 진행: ' + percent + '%');
+            if (loadingScreen && loadingBar) {
+                // HTML 로딩 화면 사용
+                this.useHtmlLoadingScreen = true;
+                
+                // 로딩 진행 상황 이벤트
+                this.load.on('progress', (value) => {
+                    try {
+                        // 로딩 바 업데이트
+                        const percent = Math.floor(value * 100);
+                        loadingBar.style.width = percent + '%';
+                        
+                        // 로그
+                        if (percent % 20 === 0) {
+                            this.logDebug('로딩 진행: ' + percent + '%');
+                        }
+                    } catch (error) {
+                        console.error('로딩 바 업데이트 중 오류 발생:', error);
+                        this.logDebug('로딩 바 업데이트 오류: ' + error.message);
                     }
-                } catch (error) {
-                    console.error('로딩 바 업데이트 중 오류 발생:', error);
-                    this.logDebug('로딩 바 업데이트 오류: ' + error.message);
-                }
-            });
-            
-            // 로딩 완료 이벤트
-            this.load.on('complete', () => {
-                try {
-                    this.logDebug('에셋 로딩 완료');
-                    progressBar.destroy();
-                    progressBarBg.destroy();
-                    loadingText.destroy();
-                } catch (error) {
-                    console.error('로딩 완료 처리 중 오류 발생:', error);
-                    this.logDebug('로딩 완료 처리 오류: ' + error.message);
-                }
-            });
+                });
+                
+                // 로딩 완료 이벤트
+                this.load.on('complete', () => {
+                    try {
+                        this.logDebug('에셋 로딩 완료');
+                        // 로딩 화면은 create 메서드에서 제거
+                    } catch (error) {
+                        console.error('로딩 완료 처리 중 오류 발생:', error);
+                        this.logDebug('로딩 완료 처리 오류: ' + error.message);
+                    }
+                });
+            } else {
+                // HTML 로딩 화면이 없는 경우 기존 방식으로 로딩 바 생성
+                this.useHtmlLoadingScreen = false;
+                
+                // 로딩 텍스트
+                const loadingText = this.add.text(
+                    this.cameras.main.width / 2,
+                    this.cameras.main.height / 2 - 50,
+                    '로딩 중...',
+                    {
+                        font: '24px Arial',
+                        fill: '#ffffff'
+                    }
+                ).setOrigin(0.5);
+                
+                // 로딩 바 배경
+                const progressBarBg = this.add.graphics();
+                progressBarBg.fillStyle(0x222222, 0.8);
+                progressBarBg.fillRect(
+                    this.cameras.main.width / 2 - 160,
+                    this.cameras.main.height / 2,
+                    320,
+                    30
+                );
+                
+                // 로딩 바
+                const progressBar = this.add.graphics();
+                
+                // 로딩 진행 상황 이벤트
+                this.load.on('progress', (value) => {
+                    try {
+                        // 로딩 바 업데이트
+                        progressBar.clear();
+                        progressBar.fillStyle(0x4CAF50, 1);
+                        progressBar.fillRect(
+                            this.cameras.main.width / 2 - 150,
+                            this.cameras.main.height / 2 + 5,
+                            300 * value,
+                            20
+                        );
+                        
+                        // 퍼센트 표시
+                        const percent = Math.floor(value * 100);
+                        loadingText.setText('로딩 중... ' + percent + '%');
+                        
+                        // 로그
+                        if (percent % 20 === 0) {
+                            this.logDebug('로딩 진행: ' + percent + '%');
+                        }
+                    } catch (error) {
+                        console.error('로딩 바 업데이트 중 오류 발생:', error);
+                        this.logDebug('로딩 바 업데이트 오류: ' + error.message);
+                    }
+                });
+                
+                // 로딩 완료 이벤트
+                this.load.on('complete', () => {
+                    try {
+                        this.logDebug('에셋 로딩 완료');
+                        progressBar.destroy();
+                        progressBarBg.destroy();
+                        loadingText.destroy();
+                    } catch (error) {
+                        console.error('로딩 완료 처리 중 오류 발생:', error);
+                        this.logDebug('로딩 완료 처리 오류: ' + error.message);
+                    }
+                });
+            }
             
             this.logDebug('로딩 바 생성 완료');
         } catch (error) {
@@ -310,6 +350,21 @@ class PreloadScene extends Phaser.Scene {
     create() {
         try {
             this.logDebug('PreloadScene create 시작');
+            
+            // HTML 로딩 화면 숨기기
+            if (this.useHtmlLoadingScreen) {
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    // 부드러운 페이드 아웃 효과
+                    loadingScreen.style.transition = 'opacity 0.5s ease-in-out';
+                    loadingScreen.style.opacity = '0';
+                    
+                    // 트랜지션 완료 후 요소 숨기기
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 500);
+                }
+            }
             
             // 애니메이션 생성
             this.createAnimations();

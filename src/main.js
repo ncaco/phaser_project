@@ -55,7 +55,7 @@ try {
         maxWidth: 1920,
         maxHeight: 1080,
         aspectRatio: 4/3,
-        uiScale: 1,
+        uiScale: 1.2,
         fontSizeBase: 16,
         debug: false
     };
@@ -67,39 +67,20 @@ try {
 
     // 화면 크기 계산 함수
     const calculateGameSize = () => {
-        // 기본 게임 비율
-        const gameRatio = window.gameSettings.aspectRatio;
-        
         // 윈도우 크기
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         
-        // 게임 컨테이너 크기 (패딩 등 고려)
+        // 게임 컨테이너 크기
         const containerWidth = gameContainer.clientWidth;
-        const containerHeight = gameContainer.clientHeight || windowHeight;
+        const containerHeight = gameContainer.clientHeight;
+        
+        // 최소 너비 설정
+        const minWidth = window.gameSettings.minWidth;
         
         // 사용 가능한 최대 크기
-        const maxWidth = Math.min(windowWidth, containerWidth, window.gameSettings.maxWidth);
-        const maxHeight = Math.min(windowHeight, containerHeight, window.gameSettings.maxHeight);
-        
-        // 화면 비율
-        const screenRatio = maxWidth / maxHeight;
-        
-        let width, height;
-        
-        if (screenRatio > gameRatio) {
-            // 화면이 게임보다 더 넓은 경우 (높이에 맞춤)
-            height = maxHeight;
-            width = height * gameRatio;
-        } else {
-            // 화면이 게임보다 더 좁은 경우 (너비에 맞춤)
-            width = maxWidth;
-            height = width / gameRatio;
-        }
-        
-        // 최소 크기 제한
-        width = Math.max(width, window.gameSettings.minWidth);
-        height = Math.max(height, window.gameSettings.minHeight);
+        const width = Math.max(minWidth, containerWidth);
+        const height = containerHeight;
         
         // UI 스케일 계산 (기본 해상도 대비)
         window.gameSettings.uiScale = Math.min(
@@ -115,10 +96,14 @@ try {
             window.gameSettings.fontSizeBase = 16;
         }
         
-        // 정수로 반올림
+        console.log(`계산된 게임 크기: ${width}x${height}, UI 스케일: ${window.gameSettings.uiScale}`);
+        if (typeof window.debugLog === 'function') {
+            window.debugLog(`계산된 게임 크기: ${width}x${height}, UI 스케일: ${window.gameSettings.uiScale}`);
+        }
+        
         return {
-            width: Math.floor(width),
-            height: Math.floor(height)
+            width: width,
+            height: height
         };
     };
     
@@ -126,13 +111,18 @@ try {
     const gameSize = calculateGameSize();
     console.log(`계산된 게임 크기: ${gameSize.width}x${gameSize.height}, UI 스케일: ${window.gameSettings.uiScale}`);
     
-    // 게임 설정
+    // Phaser 게임 설정
     const config = {
         type: Phaser.AUTO,
+        parent: 'game-container',
         width: gameSize.width,
         height: gameSize.height,
-        parent: 'game-container',
-        backgroundColor: '#2c3e50',
+        scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+            width: gameSize.width,
+            height: gameSize.height
+        },
         physics: {
             default: 'arcade',
             arcade: {
@@ -140,23 +130,17 @@ try {
                 debug: window.gameSettings.debug
             }
         },
-        scale: {
-            mode: Phaser.Scale.RESIZE,
-            autoCenter: Phaser.Scale.CENTER_BOTH,
-            width: gameSize.width,
-            height: gameSize.height
-        },
         scene: [BootScene, PreloadScene, MainMenuScene, GameScene, UIScene],
+        render: {
+            pixelArt: false,
+            antialias: true
+        },
         input: {
-            activePointers: 3, // 멀티 터치 지원
+            activePointers: 3,
             touch: {
                 capture: true,
                 target: gameContainer
             }
-        },
-        render: {
-            pixelArt: false,
-            antialias: true
         },
         dom: {
             createContainer: true
@@ -171,22 +155,26 @@ try {
     
     const game = new Phaser.Game(config);
     
-    // 화면 크기 변경 이벤트 처리
+    // 창 크기 변경 이벤트 핸들러
     window.addEventListener('resize', () => {
-        if (game.isBooted) {
+        if (game) {
             const newSize = calculateGameSize();
             game.scale.resize(newSize.width, newSize.height);
-            console.log(`게임 크기 조정: ${newSize.width}x${newSize.height}, UI 스케일: ${window.gameSettings.uiScale}`);
+            console.log(`화면 크기 변경: ${newSize.width}x${newSize.height}`);
             if (typeof window.debugLog === 'function') {
-                window.debugLog(`게임 크기 조정: ${newSize.width}x${newSize.height}, UI 스케일: ${window.gameSettings.uiScale}`);
+                window.debugLog(`화면 크기 변경: ${newSize.width}x${newSize.height}`);
             }
             
-            // 화면 크기 변경 이벤트 발생
-            if (game.events) {
-                game.events.emit('resize', newSize.width, newSize.height, window.gameSettings.uiScale);
+            // 현재 활성화된 씬에 resize 이벤트 전달
+            const activeScene = game.scene.scenes.find(scene => scene.scene.settings.active);
+            if (activeScene && typeof activeScene.handleResize === 'function') {
+                activeScene.handleResize({
+                    width: newSize.width,
+                    height: newSize.height
+                });
             }
         }
-    }, false);
+    });
     
     // 모바일 방향 변경 이벤트 처리
     window.addEventListener('orientationchange', () => {

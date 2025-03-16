@@ -229,9 +229,6 @@ class GameScene extends Phaser.Scene {
         
         // 게임 오버 화면 생성
         this.createGameOverScreen();
-        
-        // 성취 버튼 추가
-        this.createAchievementButton();
     }
     
     createGameUI() {
@@ -1219,80 +1216,6 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    // 성취 버튼 생성
-    createAchievementButton() {
-        // 성취 버튼 배경
-        const achievementButton = this.add.circle(
-            this.cameras.main.width - 30,
-            70,
-            20,
-            0xffff00,
-            1
-        );
-        achievementButton.setScrollFactor(0);
-        this.uiElements.achievementButton = achievementButton;
-        achievementButton.setDepth(100);
-        achievementButton.setInteractive();
-        
-        // 성취 버튼 아이콘
-        const achievementIcon = this.add.text(
-            this.cameras.main.width - 30,
-            70,
-            '★',
-            {
-                font: '24px Arial',
-                fill: '#000000'
-            }
-        ).setOrigin(0.5);
-        achievementIcon.setScrollFactor(0);
-        achievementIcon.setDepth(100);
-        
-        // 버튼 클릭 이벤트
-        achievementButton.on('pointerdown', () => {
-            this.showAchievementUI();
-        });
-        
-        // 버튼 호버 효과
-        achievementButton.on('pointerover', () => {
-            achievementButton.setScale(1.2);
-            achievementIcon.setScale(1.2);
-        });
-        
-        achievementButton.on('pointerout', () => {
-            achievementButton.setScale(1);
-            achievementIcon.setScale(1);
-        });
-    }
-    
-    // 성취 UI 표시
-    showAchievementUI() {
-        // 게임 일시정지
-        if (!this.gamePaused) {
-            this.togglePause();
-        }
-        
-        // 성취 UI 표시
-        this.achievementSystem.showAchievementUI();
-    }
-
-    // 적 처치 이벤트 처리
-    onEnemyKilled(enemy) {
-        // 성취 시스템 업데이트
-        this.achievementSystem.updateAchievements('enemyKilled', { enemyType: enemy.type });
-    }
-    
-    // 레벨업 이벤트 처리
-    onLevelUp(level) {
-        // 성취 시스템 업데이트
-        this.achievementSystem.updateAchievements('levelUp', { level: level });
-    }
-    
-    // 정령 업그레이드 이벤트 처리
-    onSpiritUpgraded() {
-        // 성취 시스템 업데이트
-        this.achievementSystem.updateAchievements('spiritUpgraded');
-    }
-
     // 화면 크기 변경 처리
     handleResize(gameSize) {
         if (!this.uiElements) return;
@@ -1415,6 +1338,24 @@ class GameScene extends Phaser.Scene {
         if (this.uiElements.gameOverScreen) {
             // 게임 오버 화면 요소들의 위치 조정 코드 추가
         }
+    }
+
+    // 적 처치 이벤트 처리
+    onEnemyKilled(enemy) {
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('enemyKilled', { enemyType: enemy.type });
+    }
+    
+    // 레벨업 이벤트 처리
+    onLevelUp(level) {
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('levelUp', { level: level });
+    }
+    
+    // 정령 업그레이드 이벤트 처리
+    onSpiritUpgraded() {
+        // 성취 시스템 업데이트
+        this.achievementSystem.updateAchievements('spiritUpgraded');
     }
 }
 
