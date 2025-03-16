@@ -661,4 +661,5 @@ class Item extends Phaser.Physics.Arcade.Sprite {
     }
 }
 
+// 모듈 내보내기
 module.exports = { Item }; 

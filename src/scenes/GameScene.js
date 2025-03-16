@@ -8,9 +8,38 @@ const AchievementSystem = require('../systems/AchievementSystem').AchievementSys
 
 class GameScene extends Phaser.Scene {
     constructor() {
-        super({ key: 'GameScene' });
+        super('GameScene');
+        this.logDebug('GameScene 생성됨');
+        
+        // 게임 상태 변수
+        this.gameOver = false;
+        this.gamePaused = false;
+        this.isRestarting = false;
+        this.isReturningToMenu = false;
+        
+        // 플레이어 참조
+        this.player = null;
+        
+        // 시스템 참조
+        this.enemySpawner = null;
+        this.achievementSystem = null;
+        
+        // UI 요소 저장 객체
+        this.uiElements = {};
+        
+        // 게임 설정
         this.difficulty = 'normal'; // 기본 난이도
-        this.uiElements = {}; // UI 요소 저장 객체
+        this.element = 'fire'; // 기본 속성
+        
+        // 생존 시간 (초)
+        this.survivalTime = 0;
+        this.survivalTimer = null;
+        
+        // 조이스틱 참조
+        this.joystick = null;
+        
+        // 디버그 모드
+        this.debugMode = false;
     }
 
     init(data) {
@@ -27,6 +56,10 @@ class GameScene extends Phaser.Scene {
         } else {
             this.playerElement = 'fire'; // 기본 속성
         }
+        
+        // 디버그 모드 활성화 (임시)
+        this.debugMode = true;
+        this.logDebug('디버그 모드 활성화됨');
     }
 
     create() {
@@ -115,7 +148,6 @@ class GameScene extends Phaser.Scene {
     
     createPlayer() {
         // 플레이어 생성
-        const Player = require('../entities/Player').Player;
         this.player = new Player(
             this,
             this.cameras.main.centerX,
@@ -129,15 +161,12 @@ class GameScene extends Phaser.Scene {
     
     initSystems() {
         // 레벨 시스템 초기화
-        const LevelSystem = require('../systems/LevelSystem').LevelSystem;
         this.levelSystem = new LevelSystem(this);
         
         // 적 스포너 초기화
-        const EnemySpawner = require('../systems/EnemySpawner').EnemySpawner;
         this.enemySpawner = new EnemySpawner(this);
         
         // 성취 시스템 초기화
-        const AchievementSystem = require('../systems/AchievementSystem').AchievementSystem;
         this.achievementSystem = new AchievementSystem(this);
         
         // 난이도에 따른 게임 설정 조정
@@ -647,22 +676,27 @@ class GameScene extends Phaser.Scene {
         );
         this.uiElements.gameOverStats.setOrigin(0.5);
         
+        // 버튼 간격 및 크기 설정
+        const buttonWidth = 300;
+        const buttonHeight = 60;
+        const buttonY1 = this.cameras.main.centerY + 80;
+        const buttonY2 = this.cameras.main.centerY + 150;
+        
         // 다시 시작 버튼
         this.uiElements.restartButton = this.add.rectangle(
             this.cameras.main.centerX,
-            this.cameras.main.centerY + 80,
-            300,
-            60,
+            buttonY1,
+            buttonWidth,
+            buttonHeight,
             0x4CAF50, // 녹색 계열
             0.9
         );
-        this.uiElements.restartButton.setInteractive({ useHandCursor: true });
         this.uiElements.restartButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 다시 시작 텍스트
         this.uiElements.restartText = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY + 80,
+            buttonY1,
             '다시 시작',
             {
                 fontFamily: 'Arial',
@@ -677,19 +711,18 @@ class GameScene extends Phaser.Scene {
         // 메인 메뉴 버튼
         this.uiElements.gameOverMenuButton = this.add.rectangle(
             this.cameras.main.centerX,
-            this.cameras.main.centerY + 150,
-            300,
-            60,
+            buttonY2,
+            buttonWidth,
+            buttonHeight,
             0x2196F3, // 파란색 계열
             0.9
         );
-        this.uiElements.gameOverMenuButton.setInteractive({ useHandCursor: true });
         this.uiElements.gameOverMenuButton.setStrokeStyle(2, 0xFFFFFF);
         
         // 메인 메뉴 텍스트
         this.uiElements.gameOverMenuText = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY + 150,
+            buttonY2,
             '메인 메뉴로',
             {
                 fontFamily: 'Arial',
@@ -701,14 +734,56 @@ class GameScene extends Phaser.Scene {
         );
         this.uiElements.gameOverMenuText.setOrigin(0.5);
         
-        // 버튼 이벤트
+        // 버튼에 상호작용 영역 설정
+        this.uiElements.restartButton.setInteractive({ 
+            useHandCursor: true
+        });
+        
+        this.uiElements.gameOverMenuButton.setInteractive({ 
+            useHandCursor: true
+        });
+        
+        // 디버그 모드에서 히트 영역 시각화
+        if (this.debugMode) {
+            // 다시 시작 버튼 히트 영역 시각화
+            const restartHitAreaGraphics = this.add.graphics();
+            restartHitAreaGraphics.lineStyle(2, 0xff0000);
+            restartHitAreaGraphics.strokeRect(
+                this.cameras.main.centerX - buttonWidth/2,
+                buttonY1 - buttonHeight/2,
+                buttonWidth,
+                buttonHeight
+            );
+            restartHitAreaGraphics.setDepth(2000);
+            this.uiElements.gameOverScreen.add(restartHitAreaGraphics);
+            
+            // 메인 메뉴 버튼 히트 영역 시각화
+            const menuHitAreaGraphics = this.add.graphics();
+            menuHitAreaGraphics.lineStyle(2, 0xff0000);
+            menuHitAreaGraphics.strokeRect(
+                this.cameras.main.centerX - buttonWidth/2,
+                buttonY2 - buttonHeight/2,
+                buttonWidth,
+                buttonHeight
+            );
+            menuHitAreaGraphics.setDepth(2000);
+            this.uiElements.gameOverScreen.add(menuHitAreaGraphics);
+        }
+        
+        // 버튼 이벤트 리스너 설정
         this.uiElements.restartButton.on('pointerdown', () => {
             console.log('다시 시작 버튼 클릭됨');
+            // 버튼 비활성화하여 중복 클릭 방지
+            this.uiElements.restartButton.disableInteractive();
+            this.uiElements.gameOverMenuButton.disableInteractive();
             this.restartGame();
         });
         
         this.uiElements.gameOverMenuButton.on('pointerdown', () => {
             console.log('메인 메뉴로 버튼 클릭됨');
+            // 버튼 비활성화하여 중복 클릭 방지
+            this.uiElements.restartButton.disableInteractive();
+            this.uiElements.gameOverMenuButton.disableInteractive();
             this.returnToMainMenu();
         });
         
@@ -747,11 +822,6 @@ class GameScene extends Phaser.Scene {
             this.uiElements.gameOverMenuButton,
             this.uiElements.gameOverMenuText
         ]);
-        
-        // 모든 요소의 초기 알파값 설정 (애니메이션을 위해)
-        this.uiElements.gameOverScreen.each(child => {
-            child.setAlpha(1); // 초기 알파값을 1로 설정
-        });
     }
     
     setupInput() {
@@ -1061,13 +1131,16 @@ class GameScene extends Phaser.Scene {
                         duration: 500,
                         ease: 'Back.easeOut',
                         onComplete: () => {
-                            // 버튼 상호작용 활성화
-                            if (this.uiElements.restartButton) {
+                            // 애니메이션 완료 후 버튼 상호작용 활성화 확인
+                            if (this.uiElements.restartButton && !this.uiElements.restartButton.input) {
                                 this.uiElements.restartButton.setInteractive({ useHandCursor: true });
                             }
-                            if (this.uiElements.gameOverMenuButton) {
+                            
+                            if (this.uiElements.gameOverMenuButton && !this.uiElements.gameOverMenuButton.input) {
                                 this.uiElements.gameOverMenuButton.setInteractive({ useHandCursor: true });
                             }
+                            
+                            this.logDebug('게임 오버 화면 버튼 활성화 완료');
                         }
                     });
                 }
@@ -1087,6 +1160,14 @@ class GameScene extends Phaser.Scene {
     restartGame() {
         try {
             this.logDebug('게임 재시작 시도');
+            
+            // 이미 재시작 중이면 중복 실행 방지
+            if (this.isRestarting) {
+                this.logDebug('이미 재시작 중입니다');
+                return;
+            }
+            
+            this.isRestarting = true;
             
             // 게임 오버 화면 숨기기
             if (this.uiElements && this.uiElements.gameOverScreen) {
@@ -1132,6 +1213,14 @@ class GameScene extends Phaser.Scene {
     returnToMainMenu() {
         try {
             this.logDebug('메인 메뉴로 돌아가기 시도');
+            
+            // 이미 메인 메뉴로 이동 중이면 중복 실행 방지
+            if (this.isReturningToMenu) {
+                this.logDebug('이미 메인 메뉴로 이동 중입니다');
+                return;
+            }
+            
+            this.isReturningToMenu = true;
             
             // 게임 오버 화면 숨기기
             if (this.uiElements && this.uiElements.gameOverScreen) {
@@ -1357,6 +1446,49 @@ class GameScene extends Phaser.Scene {
         // 성취 시스템 업데이트
         this.achievementSystem.updateAchievements('spiritUpgraded');
     }
+
+    // 씬 종료 시 정리
+    shutdown() {
+        console.log('GameScene 정리 시작');
+        
+        // 타이머 정리
+        if (this.survivalTimer) {
+            this.survivalTimer.remove();
+            this.survivalTimer = null;
+        }
+        
+        // 적 스포너 정지
+        if (this.enemySpawner) {
+            this.enemySpawner.stopSpawning();
+        }
+        
+        // 업적 시스템 UI 정리
+        if (this.achievementSystem) {
+            try {
+                console.log('업적 시스템 UI 정리 시작');
+                this.achievementSystem.destroyUI();
+                console.log('업적 시스템 UI 정리 완료');
+            } catch (error) {
+                console.error('업적 시스템 UI 정리 중 오류 발생:', error);
+            }
+        }
+        
+        // 이벤트 리스너 제거
+        this.scale.off('resize', this.handleResize, this);
+        this.events.off('player-death');
+        
+        // 물리 엔진 일시 정지
+        this.physics.pause();
+        
+        // 상태 변수 초기화
+        this.gameOver = false;
+        this.gamePaused = false;
+        this.isRestarting = false;
+        this.isReturningToMenu = false;
+        
+        console.log('GameScene 정리 완료');
+    }
 }
 
+// 모듈 내보내기
 module.exports = { GameScene };

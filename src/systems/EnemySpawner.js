@@ -469,6 +469,24 @@ class EnemySpawner {
             nextBossWave: this.bossWaveInterval - (this.currentWave % this.bossWaveInterval)
         };
     }
+    
+    // 적 생성 중지
+    stopSpawning() {
+        // 적 생성 타이머 중지
+        if (this.spawnTimer) {
+            this.spawnTimer.remove();
+            this.spawnTimer = null;
+        }
+        
+        // 난이도 증가 타이머 중지
+        if (this.difficultyTimer) {
+            this.difficultyTimer.remove();
+            this.difficultyTimer = null;
+        }
+        
+        console.log('적 생성 중지됨');
+    }
 }
 
+// 모듈 내보내기
 module.exports = { EnemySpawner }; 

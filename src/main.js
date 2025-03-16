@@ -1,10 +1,10 @@
 // 씬 모듈 가져오기
 try {
-    const { BootScene } = require('./scenes/BootScene');
-    const { PreloadScene } = require('./scenes/PreloadScene');
-    const { MainMenuScene } = require('./scenes/MainMenuScene');
-    const { GameScene } = require('./scenes/GameScene');
-    const { UIScene } = require('./scenes/UIScene');
+    const BootScene = require('./scenes/BootScene').BootScene;
+    const PreloadScene = require('./scenes/PreloadScene').PreloadScene;
+    const MainMenuScene = require('./scenes/MainMenuScene').MainMenuScene;
+    const GameScene = require('./scenes/GameScene').GameScene;
+    const UIScene = require('./scenes/UIScene').UIScene;
 
     // 게임 컨테이너 확인
     const gameContainer = document.getElementById('game-container');
