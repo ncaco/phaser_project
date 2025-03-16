@@ -57,9 +57,9 @@ class GameScene extends Phaser.Scene {
             this.playerElement = 'fire'; // 기본 속성
         }
         
-        // 디버그 모드 활성화 (임시)
-        this.debugMode = true;
-        this.logDebug('디버그 모드 활성화됨');
+        // 디버그 모드 비활성화
+        this.debugMode = false;
+        this.logDebug('디버그 모드 비활성화됨');
     }
 
     create() {
@@ -362,11 +362,11 @@ class GameScene extends Phaser.Scene {
         
         // 일시정지 버튼 호버 효과
         this.uiElements.pauseButton.on('pointerover', () => {
-            this.uiElements.pauseButton.fillColor = 0x555555;
+            this.uiElements.pauseButton.setFillStyle(0x555555);
         });
         
         this.uiElements.pauseButton.on('pointerout', () => {
-            this.uiElements.pauseButton.fillColor = 0x333333;
+            this.uiElements.pauseButton.setFillStyle(0x333333);
         });
         
         // 게임 UI 컨테이너에 추가
@@ -595,29 +595,40 @@ class GameScene extends Phaser.Scene {
         });
         
         // 버튼 호버 효과
-        this.uiElements.resumeButton.on('pointerover', () => {
-            this.uiElements.resumeButton.fillColor = 0x66BB6A; // 더 밝은 녹색
-            this.uiElements.resumeButton.setScale(1.05);
-            this.uiElements.resumeText.setScale(1.05);
-        });
-        
-        this.uiElements.resumeButton.on('pointerout', () => {
-            this.uiElements.resumeButton.fillColor = 0x4CAF50; // 원래 녹색
-            this.uiElements.resumeButton.setScale(1.0);
-            this.uiElements.resumeText.setScale(1.0);
-        });
-        
-        this.uiElements.mainMenuButton.on('pointerover', () => {
-            this.uiElements.mainMenuButton.fillColor = 0x42A5F5; // 더 밝은 파란색
-            this.uiElements.mainMenuButton.setScale(1.05);
-            this.uiElements.mainMenuText.setScale(1.05);
-        });
-        
-        this.uiElements.mainMenuButton.on('pointerout', () => {
-            this.uiElements.mainMenuButton.fillColor = 0x2196F3; // 원래 파란색
-            this.uiElements.mainMenuButton.setScale(1.0);
-            this.uiElements.mainMenuText.setScale(1.0);
-        });
+        try {
+            // 기존 호버 이벤트 리스너 제거 (중복 방지)
+            this.uiElements.resumeButton.off('pointerover');
+            this.uiElements.resumeButton.off('pointerout');
+            this.uiElements.mainMenuButton.off('pointerover');
+            this.uiElements.mainMenuButton.off('pointerout');
+            
+            // 새 호버 이벤트 리스너 추가
+            this.uiElements.resumeButton.on('pointerover', () => {
+                this.uiElements.resumeButton.setFillStyle(0x66BB6A); // 더 밝은 녹색
+                this.uiElements.resumeButton.setScale(1.05);
+                this.uiElements.resumeText.setScale(1.05);
+            });
+            
+            this.uiElements.resumeButton.on('pointerout', () => {
+                this.uiElements.resumeButton.setFillStyle(0x4CAF50); // 원래 녹색
+                this.uiElements.resumeButton.setScale(1.0);
+                this.uiElements.resumeText.setScale(1.0);
+            });
+            
+            this.uiElements.mainMenuButton.on('pointerover', () => {
+                this.uiElements.mainMenuButton.setFillStyle(0x42A5F5); // 더 밝은 파란색
+                this.uiElements.mainMenuButton.setScale(1.05);
+                this.uiElements.mainMenuText.setScale(1.05);
+            });
+            
+            this.uiElements.mainMenuButton.on('pointerout', () => {
+                this.uiElements.mainMenuButton.setFillStyle(0x2196F3); // 원래 파란색
+                this.uiElements.mainMenuButton.setScale(1.0);
+                this.uiElements.mainMenuText.setScale(1.0);
+            });
+        } catch (error) {
+            console.error('게임 오버 버튼 호버 효과 설정 중 오류:', error);
+        }
         
         // 일시정지 메뉴 컨테이너에 추가
         this.uiElements.pauseMenu.add([
@@ -637,50 +648,74 @@ class GameScene extends Phaser.Scene {
         this.uiElements.gameOverScreen.setDepth(200);
         this.uiElements.gameOverScreen.setVisible(false);
         
-        // 배경 패널
+        // 어두운 오버레이 배경 (전체 화면)
+        this.uiElements.gameOverOverlay = this.add.rectangle(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            this.cameras.main.width,
+            this.cameras.main.height,
+            0x000000,
+            0.7
+        );
+        
+        // 배경 패널 (둥근 모서리 효과를 위한 이미지 사용)
         this.uiElements.gameOverBg = this.add.rectangle(
             this.cameras.main.centerX,
             this.cameras.main.centerY,
-            500,
-            400,
-            0x000000,
-            0.8
+            550,
+            450,
+            0x1A1A2E, // 어두운 남색 배경
+            0.95
         );
+        this.uiElements.gameOverBg.setStrokeStyle(4, 0xFF0000); // 빨간색 테두리
         
-        // 게임 오버 텍스트
+        // 게임 오버 제목 텍스트
         this.uiElements.gameOverTitle = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY - 120,
+            this.cameras.main.centerY - 160,
             '게임 오버',
             {
                 fontFamily: 'Arial',
-                fontSize: '48px',
+                fontSize: '52px',
                 color: '#ff0000',
                 stroke: '#000000',
-                strokeThickness: 4
+                strokeThickness: 6,
+                fontStyle: 'bold'
             }
         );
         this.uiElements.gameOverTitle.setOrigin(0.5);
         
+        // 결과 텍스트 배경 (반투명 패널)
+        this.uiElements.statsPanel = this.add.rectangle(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY - 50,
+            450,
+            120,
+            0x000000,
+            0.5
+        );
+        
         // 결과 텍스트
         this.uiElements.gameOverStats = this.add.text(
             this.cameras.main.centerX,
-            this.cameras.main.centerY - 30,
+            this.cameras.main.centerY - 50,
             '',
             {
                 fontFamily: 'Arial',
-                fontSize: '24px',
+                fontSize: '26px',
                 color: '#ffffff',
-                align: 'center'
+                align: 'center',
+                stroke: '#000000',
+                strokeThickness: 2
             }
         );
         this.uiElements.gameOverStats.setOrigin(0.5);
         
         // 버튼 간격 및 크기 설정
-        const buttonWidth = 300;
-        const buttonHeight = 60;
+        const buttonWidth = 320;
+        const buttonHeight = 70;
         const buttonY1 = this.cameras.main.centerY + 80;
-        const buttonY2 = this.cameras.main.centerY + 150;
+        const buttonY2 = this.cameras.main.centerY + 160;
         
         // 다시 시작 버튼
         this.uiElements.restartButton = this.add.rectangle(
@@ -691,7 +726,7 @@ class GameScene extends Phaser.Scene {
             0x4CAF50, // 녹색 계열
             0.9
         );
-        this.uiElements.restartButton.setStrokeStyle(2, 0xFFFFFF);
+        this.uiElements.restartButton.setStrokeStyle(3, 0xFFFFFF);
         
         // 다시 시작 텍스트
         this.uiElements.restartText = this.add.text(
@@ -700,10 +735,11 @@ class GameScene extends Phaser.Scene {
             '다시 시작',
             {
                 fontFamily: 'Arial',
-                fontSize: '28px',
+                fontSize: '30px',
                 color: '#ffffff',
                 stroke: '#000000',
-                strokeThickness: 2
+                strokeThickness: 3,
+                fontStyle: 'bold'
             }
         );
         this.uiElements.restartText.setOrigin(0.5);
@@ -717,7 +753,7 @@ class GameScene extends Phaser.Scene {
             0x2196F3, // 파란색 계열
             0.9
         );
-        this.uiElements.gameOverMenuButton.setStrokeStyle(2, 0xFFFFFF);
+        this.uiElements.gameOverMenuButton.setStrokeStyle(3, 0xFFFFFF);
         
         // 메인 메뉴 텍스트
         this.uiElements.gameOverMenuText = this.add.text(
@@ -726,25 +762,27 @@ class GameScene extends Phaser.Scene {
             '메인 메뉴로',
             {
                 fontFamily: 'Arial',
-                fontSize: '28px',
+                fontSize: '30px',
                 color: '#ffffff',
                 stroke: '#000000',
-                strokeThickness: 2
+                strokeThickness: 3,
+                fontStyle: 'bold'
             }
         );
         this.uiElements.gameOverMenuText.setOrigin(0.5);
         
-        // 버튼에 상호작용 영역 설정
+        // 버튼에 상호작용 영역 설정 - 초기에는 비활성화 상태로 설정
+        // showGameOver 메서드에서 애니메이션 완료 후 활성화됨
         this.uiElements.restartButton.setInteractive({ 
             useHandCursor: true
-        });
+        }).disableInteractive(); // 초기에는 비활성화
         
         this.uiElements.gameOverMenuButton.setInteractive({ 
             useHandCursor: true
-        });
+        }).disableInteractive(); // 초기에는 비활성화
         
         // 디버그 모드에서 히트 영역 시각화
-        if (this.debugMode) {
+        if (this.debugMode && false) { // 디버그 모드에서도 히트 영역 시각화 비활성화
             // 다시 시작 버튼 히트 영역 시각화
             const restartHitAreaGraphics = this.add.graphics();
             restartHitAreaGraphics.lineStyle(2, 0xff0000);
@@ -771,50 +809,80 @@ class GameScene extends Phaser.Scene {
         }
         
         // 버튼 이벤트 리스너 설정
-        this.uiElements.restartButton.on('pointerdown', () => {
-            console.log('다시 시작 버튼 클릭됨');
-            // 버튼 비활성화하여 중복 클릭 방지
-            this.uiElements.restartButton.disableInteractive();
-            this.uiElements.gameOverMenuButton.disableInteractive();
-            this.restartGame();
-        });
+        try {
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            this.uiElements.restartButton.off('pointerdown');
+            this.uiElements.gameOverMenuButton.off('pointerdown');
+            
+            // 새 이벤트 리스너 추가
+            this.uiElements.restartButton.on('pointerdown', () => {
+                try {
+                    console.log('다시 시작 버튼 클릭됨');
+                    // 버튼 비활성화하여 중복 클릭 방지
+                    this.uiElements.restartButton.disableInteractive();
+                    this.uiElements.gameOverMenuButton.disableInteractive();
+                    this.restartGame();
+                } catch (error) {
+                    console.error('다시 시작 버튼 처리 중 오류:', error);
+                }
+            });
+            
+            this.uiElements.gameOverMenuButton.on('pointerdown', () => {
+                try {
+                    console.log('메인 메뉴로 버튼 클릭됨');
+                    // 버튼 비활성화하여 중복 클릭 방지
+                    this.uiElements.restartButton.disableInteractive();
+                    this.uiElements.gameOverMenuButton.disableInteractive();
+                    this.returnToMainMenu();
+                } catch (error) {
+                    console.error('메인 메뉴 버튼 처리 중 오류:', error);
+                }
+            });
+        } catch (error) {
+            console.error('게임 오버 버튼 이벤트 설정 중 오류:', error);
+        }
         
-        this.uiElements.gameOverMenuButton.on('pointerdown', () => {
-            console.log('메인 메뉴로 버튼 클릭됨');
-            // 버튼 비활성화하여 중복 클릭 방지
-            this.uiElements.restartButton.disableInteractive();
-            this.uiElements.gameOverMenuButton.disableInteractive();
-            this.returnToMainMenu();
-        });
-        
-        // 버튼 호버 효과
-        this.uiElements.restartButton.on('pointerover', () => {
-            this.uiElements.restartButton.fillColor = 0x66BB6A; // 더 밝은 녹색
-            this.uiElements.restartButton.setScale(1.05);
-            this.uiElements.restartText.setScale(1.05);
-        });
-        
-        this.uiElements.restartButton.on('pointerout', () => {
-            this.uiElements.restartButton.fillColor = 0x4CAF50; // 원래 녹색
-            this.uiElements.restartButton.setScale(1.0);
-            this.uiElements.restartText.setScale(1.0);
-        });
-        
-        this.uiElements.gameOverMenuButton.on('pointerover', () => {
-            this.uiElements.gameOverMenuButton.fillColor = 0x42A5F5; // 더 밝은 파란색
-            this.uiElements.gameOverMenuButton.setScale(1.05);
-            this.uiElements.gameOverMenuText.setScale(1.05);
-        });
-        
-        this.uiElements.gameOverMenuButton.on('pointerout', () => {
-            this.uiElements.gameOverMenuButton.fillColor = 0x2196F3; // 원래 파란색
-            this.uiElements.gameOverMenuButton.setScale(1.0);
-            this.uiElements.gameOverMenuText.setScale(1.0);
-        });
+        // 버튼 호버 효과 설정
+        try {
+            // 기존 호버 이벤트 리스너 제거 (중복 방지)
+            this.uiElements.restartButton.off('pointerover');
+            this.uiElements.restartButton.off('pointerout');
+            this.uiElements.gameOverMenuButton.off('pointerover');
+            this.uiElements.gameOverMenuButton.off('pointerout');
+            
+            // 새 호버 이벤트 리스너 추가
+            this.uiElements.restartButton.on('pointerover', () => {
+                this.uiElements.restartButton.setFillStyle(0x66BB6A); // 더 밝은 녹색
+                this.uiElements.restartButton.setScale(1.05);
+                this.uiElements.restartText.setScale(1.05);
+            });
+            
+            this.uiElements.restartButton.on('pointerout', () => {
+                this.uiElements.restartButton.setFillStyle(0x4CAF50); // 원래 녹색
+                this.uiElements.restartButton.setScale(1.0);
+                this.uiElements.restartText.setScale(1.0);
+            });
+            
+            this.uiElements.gameOverMenuButton.on('pointerover', () => {
+                this.uiElements.gameOverMenuButton.setFillStyle(0x42A5F5); // 더 밝은 파란색
+                this.uiElements.gameOverMenuButton.setScale(1.05);
+                this.uiElements.gameOverMenuText.setScale(1.05);
+            });
+            
+            this.uiElements.gameOverMenuButton.on('pointerout', () => {
+                this.uiElements.gameOverMenuButton.setFillStyle(0x2196F3); // 원래 파란색
+                this.uiElements.gameOverMenuButton.setScale(1.0);
+                this.uiElements.gameOverMenuText.setScale(1.0);
+            });
+        } catch (error) {
+            console.error('게임 오버 버튼 호버 효과 설정 중 오류:', error);
+        }
         
         // 게임 오버 화면 컨테이너에 추가
         this.uiElements.gameOverScreen.add([
+            this.uiElements.gameOverOverlay,
             this.uiElements.gameOverBg,
+            this.uiElements.statsPanel,
             this.uiElements.gameOverTitle,
             this.uiElements.gameOverStats,
             this.uiElements.restartButton,
@@ -1099,10 +1167,11 @@ class GameScene extends Phaser.Scene {
                 if (this.player) {
                     const waveInfo = this.enemySpawner ? this.enemySpawner.currentWave : 1;
                     const killCount = this.enemySpawner ? this.enemySpawner.enemiesKilled : 0;
+                    const spiritLevel = this.player.level || 1;
                     
                     statsText += `최대 웨이브: ${waveInfo}\n`;
                     statsText += `처치한 적: ${killCount}\n`;
-                    statsText += `플레이어 레벨: ${this.player.level || 1}`;
+                    statsText += `플레이어 레벨: ${spiritLevel}`;
                 } else {
                     statsText += `최대 웨이브: 1\n`;
                     statsText += `처치한 적: 0\n`;
@@ -1111,6 +1180,32 @@ class GameScene extends Phaser.Scene {
                 
                 this.uiElements.gameOverStats.setText(statsText);
             }
+            
+            // 화면 흔들림 효과
+            this.cameras.main.shake(500, 0.01);
+            
+            // 화면 플래시 효과 (빨간색)
+            const flashOverlay = this.add.rectangle(
+                this.cameras.main.centerX,
+                this.cameras.main.centerY,
+                this.cameras.main.width,
+                this.cameras.main.height,
+                0xff0000,
+                0.3
+            );
+            flashOverlay.setScrollFactor(0);
+            flashOverlay.setDepth(150);
+            
+            // 플래시 효과 페이드 아웃
+            this.tweens.add({
+                targets: flashOverlay,
+                alpha: 0,
+                duration: 800,
+                ease: 'Power2',
+                onComplete: () => {
+                    flashOverlay.destroy();
+                }
+            });
             
             // 게임 오버 화면 표시 (플레이어 사망 애니메이션 후)
             this.time.delayedCall(1000, () => {
@@ -1121,26 +1216,79 @@ class GameScene extends Phaser.Scene {
                         child.setScale(0.8);
                     });
                     
+                    // 오버레이는 별도 처리 (페이드 인)
+                    if (this.uiElements.gameOverOverlay) {
+                        this.uiElements.gameOverOverlay.setAlpha(0);
+                        this.uiElements.gameOverOverlay.setScale(1);
+                    }
+                    
                     this.uiElements.gameOverScreen.setVisible(true);
                     
-                    // 게임 오버 화면 등장 애니메이션
+                    // 오버레이 페이드 인
+                    if (this.uiElements.gameOverOverlay) {
+                        this.tweens.add({
+                            targets: this.uiElements.gameOverOverlay,
+                            alpha: 0.7,
+                            duration: 300,
+                            ease: 'Power2'
+                        });
+                    }
+                    
+                    // 게임 오버 패널 애니메이션
                     this.tweens.add({
-                        targets: this.uiElements.gameOverScreen.getAll(),
+                        targets: [
+                            this.uiElements.gameOverBg,
+                            this.uiElements.statsPanel,
+                            this.uiElements.gameOverTitle,
+                            this.uiElements.gameOverStats
+                        ],
                         alpha: 1,
                         scale: 1,
                         duration: 500,
                         ease: 'Back.easeOut',
+                        delay: 200
+                    });
+                    
+                    // 버튼 애니메이션 (순차적으로 나타남)
+                    this.tweens.add({
+                        targets: [
+                            this.uiElements.restartButton,
+                            this.uiElements.restartText
+                        ],
+                        alpha: 1,
+                        scale: 1,
+                        duration: 400,
+                        ease: 'Back.easeOut',
+                        delay: 500
+                    });
+                    
+                    this.tweens.add({
+                        targets: [
+                            this.uiElements.gameOverMenuButton,
+                            this.uiElements.gameOverMenuText
+                        ],
+                        alpha: 1,
+                        scale: 1,
+                        duration: 400,
+                        ease: 'Back.easeOut',
+                        delay: 700,
                         onComplete: () => {
-                            // 애니메이션 완료 후 버튼 상호작용 활성화 확인
-                            if (this.uiElements.restartButton && !this.uiElements.restartButton.input) {
-                                this.uiElements.restartButton.setInteractive({ useHandCursor: true });
+                            try {
+                                // 애니메이션 완료 후 버튼 상호작용 활성화
+                                if (this.uiElements.restartButton && !this.uiElements.restartButton.input.enabled) {
+                                    this.uiElements.restartButton.setInteractive({ useHandCursor: true });
+                                    console.log('다시 시작 버튼 활성화됨');
+                                }
+                                
+                                if (this.uiElements.gameOverMenuButton && !this.uiElements.gameOverMenuButton.input.enabled) {
+                                    this.uiElements.gameOverMenuButton.setInteractive({ useHandCursor: true });
+                                    console.log('메인 메뉴 버튼 활성화됨');
+                                }
+                                
+                                this.logDebug('게임 오버 화면 버튼 활성화 완료');
+                            } catch (error) {
+                                console.error('게임 오버 버튼 활성화 중 오류:', error);
                             }
-                            
-                            if (this.uiElements.gameOverMenuButton && !this.uiElements.gameOverMenuButton.input) {
-                                this.uiElements.gameOverMenuButton.setInteractive({ useHandCursor: true });
-                            }
-                            
-                            this.logDebug('게임 오버 화면 버튼 활성화 완료');
                         }
                     });
                 }
