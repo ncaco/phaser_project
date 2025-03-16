@@ -46,32 +46,32 @@ class Spirit extends Phaser.Physics.Arcade.Sprite {
             this.element = 'fire';
             this.setTint(0xff5500);
             this.damage = 15;
-            this.attackSpeed = 1200;
+            this.attackSpeed = 1000;
             this.attackRange = 120;
         } else if (this.name.includes('물')) {
             this.element = 'water';
             this.setTint(0x00aaff);
             this.damage = 12;
-            this.attackSpeed = 800;
+            this.attackSpeed = 1000;
             this.attackRange = 180;
         } else if (this.name.includes('땅')) {
             this.element = 'earth';
             this.setTint(0xaa5500);
             this.damage = 20;
-            this.attackSpeed = 1500;
+            this.attackSpeed = 1000;
             this.attackRange = 100;
         } else if (this.name.includes('바람')) {
             this.element = 'air';
             this.setTint(0x00ff00);
             this.damage = 10;
-            this.attackSpeed = 500;
+            this.attackSpeed = 1000;
             this.attackRange = 200;
         } else {
             // 기본 정령 (불 속성)
             this.element = 'fire';
             this.setTint(0xff5500);
             this.damage = 15;
-            this.attackSpeed = 1200;
+            this.attackSpeed = 1000;
             this.attackRange = 120;
         }
         

@@ -71,35 +71,35 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             case 'fire':
                 this.setTint(0xff5500);
                 this.attackDamage = 15;
-                this.attackSpeed = 1200;
+                this.attackSpeed = 1000;
                 this.attackRange = 120;
                 break;
                 
             case 'water':
                 this.setTint(0x00aaff);
                 this.attackDamage = 12;
-                this.attackSpeed = 800;
+                this.attackSpeed = 1000;
                 this.attackRange = 180;
                 break;
                 
             case 'earth':
                 this.setTint(0xaa5500);
                 this.attackDamage = 20;
-                this.attackSpeed = 1500;
+                this.attackSpeed = 1000;
                 this.attackRange = 100;
                 break;
                 
             case 'air':
                 this.setTint(0x00ff00);
                 this.attackDamage = 10;
-                this.attackSpeed = 500;
+                this.attackSpeed = 1000;
                 this.attackRange = 200;
                 break;
                 
             default:
                 this.setTint(0xff5500); // 기본값은 불 속성
                 this.attackDamage = 15;
-                this.attackSpeed = 1200;
+                this.attackSpeed = 1000;
                 this.attackRange = 120;
                 break;
         }
