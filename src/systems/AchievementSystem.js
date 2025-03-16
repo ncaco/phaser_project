@@ -327,89 +327,116 @@ class AchievementSystem {
             return;
         }
         
+        // 화면 크기 가져오기
+        const width = this.scene.cameras.main.width;
+        const height = this.scene.cameras.main.height;
+        
         // 성취 UI 컨테이너 생성
         this.achievementUI = this.scene.add.container(
-            this.scene.cameras.main.width / 2,
-            this.scene.cameras.main.height / 2
+            width / 2,
+            height / 2
         );
         
-        // 배경 패널
+        // 배경 패널 (화면 크기에 맞게 조정)
+        const panelWidth = Math.min(600, width * 0.9);
+        const panelHeight = Math.min(400, height * 0.8);
+        
         const background = this.scene.add.rectangle(
             0, 0,
-            600, 400,
+            panelWidth, panelHeight,
             0x000000, 0.9
         );
         background.setStrokeStyle(2, 0xffffff);
         
         // 제목
         const title = this.scene.add.text(
-            0, -180,
+            0, -panelHeight / 2 + 20,
             '성취 목록',
             {
-                font: '24px Arial',
+                font: `${window.getScaledFontSize(24)}px Arial`,
                 fill: '#ffffff'
             }
         ).setOrigin(0.5);
         
         // 닫기 버튼
         const closeButton = this.scene.add.rectangle(
-            280, -180,
+            panelWidth / 2 - 20, -panelHeight / 2 + 20,
             30, 30,
             0xff0000, 1
         );
         closeButton.setInteractive();
         closeButton.on('pointerdown', () => {
             this.hideAchievementUI();
+            
+            // 게임 재개
+            if (this.scene.gamePaused) {
+                this.scene.togglePause();
+            }
         });
         
         const closeText = this.scene.add.text(
-            280, -180,
+            panelWidth / 2 - 20, -panelHeight / 2 + 20,
             'X',
             {
-                font: '20px Arial',
+                font: `${window.getScaledFontSize(20)}px Arial`,
                 fill: '#ffffff'
             }
         ).setOrigin(0.5);
         
+        // 스크롤 영역 생성
+        const mask = this.scene.add.graphics();
+        mask.fillStyle(0xffffff);
+        mask.fillRect(
+            -panelWidth / 2 + 10, 
+            -panelHeight / 2 + 50, 
+            panelWidth - 20, 
+            panelHeight - 70
+        );
+        
+        // 성취 목록 컨테이너 생성
+        const achievementsContainer = this.scene.add.container(0, 0);
+        achievementsContainer.setMask(new Phaser.Display.Masks.GeometryMask(this.scene, mask));
+        
         // 성취 목록 추가
         const achievementItems = [];
-        let yPos = -140;
+        let yPos = -panelHeight / 2 + 70;
+        const itemHeight = 45;
         
         this.achievements.forEach(achievement => {
             // 성취 항목 배경
             const itemBg = this.scene.add.rectangle(
                 0, yPos,
-                550, 40,
+                panelWidth - 40, itemHeight,
                 achievement.completed ? 0x004400 : 0x222222,
                 1
             );
             
             // 성취 이름
             const nameText = this.scene.add.text(
-                -250, yPos,
+                -panelWidth / 2 + 30, yPos - itemHeight / 2 + 10,
                 achievement.name,
                 {
-                    font: '16px Arial',
+                    font: `${window.getScaledFontSize(16)}px Arial`,
                     fill: achievement.completed ? '#00ff00' : '#ffffff'
                 }
-            ).setOrigin(0, 0.5);
+            ).setOrigin(0, 0);
             
             // 성취 설명
             const descText = this.scene.add.text(
-                -100, yPos,
+                -panelWidth / 2 + 30, yPos + 5,
                 achievement.description,
                 {
-                    font: '14px Arial',
+                    font: `${window.getScaledFontSize(14)}px Arial`,
                     fill: '#aaaaaa'
                 }
-            ).setOrigin(0, 0.5);
+            ).setOrigin(0, 0);
             
             // 진행도
             const progressText = this.scene.add.text(
-                200, yPos,
+                panelWidth / 2 - 120, yPos,
                 `${achievement.progress}/${achievement.requirement}`,
                 {
-                    font: '14px Arial',
+                    font: `${window.getScaledFontSize(14)}px Arial`,
                     fill: '#ffff00'
                 }
             ).setOrigin(0.5);
@@ -435,20 +462,58 @@ class AchievementSystem {
             }
             
             const rewardInfo = this.scene.add.text(
-                250, yPos,
+                panelWidth / 2 - 30, yPos,
                 rewardText,
                 {
-                    font: '14px Arial',
+                    font: `${window.getScaledFontSize(14)}px Arial`,
                     fill: '#00ffff'
                 }
-            ).setOrigin(0, 0.5);
+            ).setOrigin(1, 0.5);
             
             achievementItems.push(itemBg, nameText, descText, progressText, rewardInfo);
-            yPos += 45;
+            achievementsContainer.add([itemBg, nameText, descText, progressText, rewardInfo]);
+            
+            yPos += itemHeight + 5;
         });
         
+        // 스크롤 기능 추가
+        const scrollableHeight = yPos - (-panelHeight / 2 + 70);
+        const maskHeight = panelHeight - 70;
+        
+        if (scrollableHeight > maskHeight) {
+            let isDragging = false;
+            let startY = 0;
+            let startContainerY = 0;
+            
+            background.setInteractive();
+            
+            background.on('pointerdown', (pointer) => {
+                isDragging = true;
+                startY = pointer.y;
+                startContainerY = achievementsContainer.y;
+            });
+            
+            this.scene.input.on('pointermove', (pointer) => {
+                if (isDragging) {
+                    const deltaY = pointer.y - startY;
+                    let newY = startContainerY + deltaY;
+                    
+                    // 스크롤 범위 제한
+                    const minY = maskHeight - scrollableHeight;
+                    const maxY = 0;
+                    
+                    newY = Phaser.Math.Clamp(newY, minY, maxY);
+                    achievementsContainer.y = newY;
+                }
+            });
+            
+            this.scene.input.on('pointerup', () => {
+                isDragging = false;
+            });
+        }
+        
         // UI에 모든 요소 추가
-        this.achievementUI.add([background, title, closeButton, closeText, ...achievementItems]);
+        this.achievementUI.add([background, title, closeButton, closeText, mask, achievementsContainer]);
         
         // UI를 최상위 레이어에 표시
         this.achievementUI.setDepth(1000);
