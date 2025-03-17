@@ -392,83 +392,37 @@ class Item extends Phaser.Physics.Arcade.Sprite {
                     break;
                     
                 case 'spirit':
-                    // 랜덤 정령 타입 선택
-                    const spiritTypes = ['기본 정령', '불 정령', '물 정령', '바람 정령', '땅 정령', '번개 정령', '얼음 정령', '빛 정령'];
-                    const weights = [0.25, 0.15, 0.15, 0.12, 0.1, 0.08, 0.08, 0.07]; // 가중치
+                    // 정령 추가 대신 경험치 증가로 변경
+                    const spiritExpAmount = 50; // 정령 아이템은 더 많은 경험치 제공
+                    player.experience += spiritExpAmount;
                     
-                    // 가중치에 따른 랜덤 선택
-                    let random = Math.random();
-                    let cumulativeWeight = 0;
-                    let selectedType = spiritTypes[0];
-                    
-                    for (let i = 0; i < spiritTypes.length; i++) {
-                        cumulativeWeight += weights[i];
-                        if (random <= cumulativeWeight) {
-                            selectedType = spiritTypes[i];
-                            break;
-                        }
+                    // 레벨업 체크
+                    if (player.experience >= player.experienceToNextLevel) {
+                        player.level++;
+                        player.experience -= player.experienceToNextLevel;
+                        player.experienceToNextLevel = Math.floor(player.experienceToNextLevel * 1.2);
+                        
+                        // 레벨업 이벤트 발생
+                        player.scene.events.emit('levelUp', player.level);
                     }
                     
-                    // 희귀도가 높을수록 더 좋은 정령 확률 증가
-                    if (this.rarity === 'rare' && Math.random() < 0.5) {
-                        // 희귀: 바람 정령 이상의 정령 확률 증가
-                        const rareIndex = Math.floor(Math.random() * 5) + 3; // 3~7 (바람~빛)
-                        selectedType = spiritTypes[Math.min(rareIndex, spiritTypes.length - 1)];
-                    } else if (this.rarity === 'epic' && Math.random() < 0.7) {
-                        // 에픽: 땅 정령 이상의 정령 확률 증가
-                        const epicIndex = Math.floor(Math.random() * 4) + 4; // 4~7 (땅~빛)
-                        selectedType = spiritTypes[Math.min(epicIndex, spiritTypes.length - 1)];
-                    } else if (this.rarity === 'legendary') {
-                        // 전설: 번개, 얼음, 빛 정령 중 하나
-                        const legendaryIndex = Math.floor(Math.random() * 3) + 5; // 5~7 (번개~빛)
-                        selectedType = spiritTypes[legendaryIndex];
-                    }
-                    
-                    // 난이도에 따른 정령 타입 조정
-                    if (this.scene.difficulty === 'easy' && Math.random() < 0.3) {
-                        // 쉬움: 더 좋은 정령이 나올 확률 증가
-                        const betterIndex = Math.min(spiritTypes.indexOf(selectedType) + 1, spiritTypes.length - 1);
-                        selectedType = spiritTypes[betterIndex];
-                    } else if (this.scene.difficulty === 'hard' && Math.random() < 0.3) {
-                        // 어려움: 더 낮은 등급의 정령이 나올 확률 증가
-                        const worseIndex = Math.max(spiritTypes.indexOf(selectedType) - 1, 0);
-                        selectedType = spiritTypes[worseIndex];
-                    }
-                    
-                    // 정령 추가
-                    if (typeof player.addSpirit === 'function') {
-                        player.addSpirit(selectedType);
-                    } else {
-                        console.error('플레이어에 addSpirit 메서드가 없습니다.');
-                    }
+                    console.log('정령 아이템 효과: 경험치 증가');
                     
                     // 정령 타입에 따른 색상 설정
                     let textColor = 0xffff00; // 기본 노란색
-                    switch (selectedType) {
-                        case '불 정령':
+                    switch (this.rarity) {
+                        case 'rare':
                             textColor = 0xff5500;
                             break;
-                        case '물 정령':
-                            textColor = 0x00aaff;
+                        case 'epic':
+                            textColor = 0xff00ff;
                             break;
-                        case '바람 정령':
-                            textColor = 0x00ff00;
-                            break;
-                        case '땅 정령':
-                            textColor = 0xaa5500;
-                            break;
-                        case '번개 정령':
-                            textColor = 0xffff00;
-                            break;
-                        case '얼음 정령':
-                            textColor = 0x00ffff;
-                            break;
-                        case '빛 정령':
-                            textColor = 0xffffaa;
+                        case 'legendary':
+                            textColor = 0xffaa00;
                             break;
                     }
                     
-                    this.createEffectText(`새로운 ${selectedType}!`, textColor);
+                    this.createEffectText(`새로운 정령!`, textColor);
                     break;
                     
                 case 'upgrade':

@@ -70,6 +70,9 @@ class GameScene extends Phaser.Scene {
             this.gameOver = false;
             this.gamePaused = false;
             
+            // active 속성 명시적으로 설정
+            this.active = true;
+            
             // 배경 생성
             this.createBackground();
             
@@ -147,39 +150,85 @@ class GameScene extends Phaser.Scene {
     }
     
     createPlayer() {
-        // 플레이어 생성
-        this.player = new Player(
-            this,
-            this.cameras.main.centerX,
-            this.cameras.main.centerY,
-            this.playerElement // 선택한 속성 전달
-        );
-        
-        // 플레이어 초기 정령 추가
-        this.player.addSpirit('기본 정령');
+        try {
+            console.log('플레이어 생성 시작...');
+            console.log('플레이어 생성 정보:', {
+                씬: this.scene ? this.scene.key : '알 수 없음',
+                위치: `(${this.cameras.main.centerX}, ${this.cameras.main.centerY})`,
+                속성: this.playerElement || 'fire'
+            });
+            
+            // 플레이어 생성
+            this.player = new Player(
+                this,
+                this.cameras.main.centerX,
+                this.cameras.main.centerY,
+                this.playerElement // 선택한 속성 전달
+            );
+            
+            console.log('플레이어 생성 완료:', {
+                생성됨: this.player ? true : false,
+                위치: this.player ? `(${this.player.x}, ${this.player.y})` : '없음',
+                체력: this.player ? `${this.player.health}/${this.player.maxHealth}` : '없음'
+            });
+        } catch (error) {
+            console.error('플레이어 생성 중 오류 발생:', error);
+            console.error('오류 세부 정보:', error.stack);
+        }
     }
     
     initSystems() {
-        // 레벨 시스템 초기화
-        this.levelSystem = new LevelSystem(this);
-        
-        // 적 스포너 초기화
-        this.enemySpawner = new EnemySpawner(this);
-        
-        // 성취 시스템 초기화
-        this.achievementSystem = new AchievementSystem(this);
-        
-        // 난이도에 따른 게임 설정 조정
-        this.applyDifficultySettings();
-        
-        // 생존 시간 타이머 (성취 시스템용)
-        this.survivalTime = 0;
-        this.survivalTimer = this.time.addEvent({
-            delay: 1000, // 1초마다
-            callback: this.updateSurvivalTime,
-            callbackScope: this,
-            loop: true
-        });
+        try {
+            console.log('시스템 초기화 시작...');
+            console.log('플레이어 상태 확인:', this.player ? '생성됨' : '생성되지 않음');
+            
+            // active 속성 명시적으로 설정
+            this.active = true;
+            
+            // 레벨 시스템 초기화
+            console.log('레벨 시스템 초기화 시도...');
+            this.levelSystem = new LevelSystem(this);
+            console.log('레벨 시스템 초기화 완료');
+            
+            // 적 스포너 초기화
+            try {
+                console.log('적 스포너 초기화 시도...');
+                console.log('적 스포너 초기화 전 씬 상태:', {
+                    씬활성화: this.active,
+                    플레이어존재: this.player ? true : false,
+                    적그룹존재: this.enemies ? true : false
+                });
+                this.enemySpawner = new EnemySpawner(this);
+                console.log('적 스포너 초기화 완료');
+            } catch (error) {
+                console.error('적 스포너 초기화 중 오류 발생:', error);
+                console.error('오류 세부 정보:', error.stack);
+            }
+            
+            // 성취 시스템 초기화
+            console.log('성취 시스템 초기화 시도...');
+            this.achievementSystem = new AchievementSystem(this);
+            console.log('성취 시스템 초기화 완료');
+            
+            // 난이도에 따른 게임 설정 조정
+            console.log('난이도 설정 적용 시도...');
+            this.applyDifficultySettings();
+            console.log('난이도 설정 적용 완료');
+            
+            // 생존 시간 타이머 (성취 시스템용)
+            this.survivalTime = 0;
+            this.survivalTimer = this.time.addEvent({
+                delay: 1000, // 1초마다
+                callback: this.updateSurvivalTime,
+                callbackScope: this,
+                loop: true
+            });
+            
+            console.log('시스템 초기화 완료');
+        } catch (error) {
+            console.error('시스템 초기화 중 오류 발생:', error);
+            console.error('오류 세부 정보:', error.stack);
+        }
     }
     
     // 난이도 설정 적용
@@ -908,35 +957,90 @@ class GameScene extends Phaser.Scene {
     }
     
     startGame() {
-        // 적 스포너 시작
-        this.enemySpawner.start();
-        
-        // 게임 타이머 시작 (생존 시간 측정)
-        this.gameStartTime = Date.now();
-        this.survivalTime = 0;
-        
-        // 타이머 이벤트 (1초마다 생존 시간 업데이트)
-        this.survivalTimer = this.time.addEvent({
-            delay: 1000,
-            callback: this.updateSurvivalTime,
-            callbackScope: this,
-            loop: true
-        });
+        try {
+            console.log('게임 시작 시도...');
+            console.log('플레이어 상태:', {
+                생성됨: this.player ? true : false,
+                위치: this.player ? `(${this.player.x}, ${this.player.y})` : '없음',
+                체력: this.player ? `${this.player.health}/${this.player.maxHealth}` : '없음',
+                속성: this.player ? this.player.element : '없음'
+            });
+            
+            // active 속성 명시적으로 설정
+            this.active = true;
+            
+            // 플레이어가 없으면 생성
+            if (!this.player) {
+                console.log('플레이어가 없어 새로 생성합니다.');
+                this.createPlayer();
+            }
+            
+            // 적 그룹이 없으면 생성
+            if (!this.enemies) {
+                console.log('적 그룹이 없어 새로 생성합니다.');
+                this.enemies = this.physics.add.group();
+            }
+            
+            // 적 스포너 초기화 및 시작
+            console.log('적 스포너 초기화 및 시작 시도...');
+            
+            // 기존 적 스포너 제거
+            if (this.enemySpawner) {
+                console.log('기존 적 스포너 정지 및 제거');
+                this.enemySpawner.stop();
+            }
+            
+            // 새 적 스포너 생성
+            console.log('새 적 스포너 생성');
+            const EnemySpawner = require('../systems/EnemySpawner').EnemySpawner;
+            this.enemySpawner = new EnemySpawner(this);
+            
+            // 적 스포너 시작
+            console.log('적 스포너 시작');
+            this.enemySpawner.start();
+            
+            console.log('적 스포너 초기화 및 시작 완료');
+            
+            // 게임 타이머 시작 (생존 시간 측정)
+            this.gameStartTime = Date.now();
+            this.survivalTime = 0;
+            
+            // 타이머 이벤트 (1초마다 생존 시간 업데이트)
+            this.survivalTimer = this.time.addEvent({
+                delay: 1000,
+                callback: this.updateSurvivalTime,
+                callbackScope: this,
+                loop: true
+            });
+            
+            console.log('게임 시작 완료');
+        } catch (error) {
+            console.error('게임 시작 중 오류 발생:', error);
+            console.error('오류 세부 정보:', error.stack);
+        }
     }
     
     update(time, delta) {
-        // 게임 오버 또는 일시정지 상태에서는 업데이트 중지
-        if (this.gameOver || this.gamePaused) return;
+        // 게임 오버 상태면 업데이트 중지
+        if (this.gameOver) return;
+        
+        // 게임 일시 정지 상태면 업데이트 중지
+        if (this.gamePaused) return;
+        
+        // active 속성 명시적으로 설정
+        this.active = true;
         
         // 플레이어 업데이트
-        if (this.player) {
-            this.player.update(time, delta);
+        if (this.player && this.player.update) {
+            this.player.update();
         }
         
-        // 적 업데이트
-        this.enemies.getChildren().forEach(enemy => {
-            enemy.update(time, delta);
-        });
+        // 적 업데이트 - enemies가 존재하는지 확인
+        if (this.enemies && this.enemies.getChildren) {
+            this.enemies.getChildren().forEach(enemy => {
+                enemy.update(time, delta);
+            });
+        }
         
         // 배경 스크롤 효과 - 부드럽게 조정
         if (this.player && this.background) {
@@ -1585,14 +1689,224 @@ class GameScene extends Phaser.Scene {
     
     // 레벨업 이벤트 처리
     onLevelUp(level) {
-        // 성취 시스템 업데이트
-        this.achievementSystem.updateAchievements('levelUp', { level: level });
+        try {
+            this.logDebug(`레벨업: ${level}`);
+            
+            // 레벨업 효과음 재생
+            this.sound.play('level_up');
+            
+            // 레벨업 텍스트 표시
+            const levelUpText = this.add.text(
+                this.cameras.main.width / 2,
+                this.cameras.main.height / 2 - 50,
+                'LEVEL UP!',
+                {
+                    font: '32px Arial',
+                    fill: '#ffff00',
+                    stroke: '#000000',
+                    strokeThickness: 4
+                }
+            ).setOrigin(0.5);
+            
+            // 텍스트 애니메이션
+            this.tweens.add({
+                targets: levelUpText,
+                y: levelUpText.y - 30,
+                alpha: 0,
+                duration: 1500,
+                onComplete: () => {
+                    levelUpText.destroy();
+                }
+            });
+            
+            // 레벨업 보상 선택 UI 표시
+            this.showLevelUpRewards();
+        } catch (error) {
+            console.error('레벨업 처리 중 오류 발생:', error);
+        }
     }
     
-    // 정령 업그레이드 이벤트 처리
-    onSpiritUpgraded() {
-        // 성취 시스템 업데이트
-        this.achievementSystem.updateAchievements('spiritUpgraded');
+    // 레벨업 보상 선택 UI 표시 메서드 수정
+    showLevelUpRewards() {
+        try {
+            // 게임 일시 정지
+            this.pauseGame();
+            
+            // 보상 옵션 생성
+            const rewards = [
+                { type: 'health', name: '최대 체력 증가', description: '최대 체력이 20 증가합니다.' },
+                { type: 'damage', name: '공격력 증가', description: '공격력이 5 증가합니다.' },
+                { type: 'speed', name: '이동 속도 증가', description: '이동 속도가 10% 증가합니다.' },
+                { type: 'attackSpeed', name: '공격 속도 증가', description: '공격 속도가 10% 증가합니다.' },
+                { type: 'attackRange', name: '공격 범위 증가', description: '공격 범위가 15% 증가합니다.' }
+            ];
+            
+            // 랜덤하게 3개 선택
+            const selectedRewards = Phaser.Utils.Array.Shuffle(rewards.slice(0)).slice(0, 3);
+            
+            // 배경 패널
+            const panel = this.add.rectangle(
+                this.cameras.main.width / 2,
+                this.cameras.main.height / 2,
+                this.cameras.main.width * 0.8,
+                this.cameras.main.height * 0.7,
+                0x000000,
+                0.8
+            );
+            
+            // 제목
+            const title = this.add.text(
+                this.cameras.main.width / 2,
+                panel.y - panel.height * 0.4,
+                '레벨업 보상 선택',
+                {
+                    font: '28px Arial',
+                    fill: '#ffffff'
+                }
+            ).setOrigin(0.5);
+            
+            // 보상 버튼 생성
+            const buttons = [];
+            
+            for (let i = 0; i < selectedRewards.length; i++) {
+                const reward = selectedRewards[i];
+                
+                // 버튼 배경
+                const button = this.add.rectangle(
+                    this.cameras.main.width / 2,
+                    panel.y - panel.height * 0.2 + i * 120,
+                    panel.width * 0.8,
+                    100,
+                    0x333333
+                ).setInteractive();
+                
+                // 버튼 텍스트
+                const buttonText = this.add.text(
+                    button.x - button.width * 0.4,
+                    button.y - 20,
+                    reward.name,
+                    {
+                        font: '24px Arial',
+                        fill: '#ffffff'
+                    }
+                ).setOrigin(0, 0.5);
+                
+                // 설명 텍스트
+                const descriptionText = this.add.text(
+                    buttonText.x,
+                    buttonText.y + 30,
+                    reward.description,
+                    {
+                        font: '18px Arial',
+                        fill: '#cccccc'
+                    }
+                ).setOrigin(0, 0.5);
+                
+                // 버튼 이벤트
+                button.on('pointerover', () => {
+                    button.fillColor = 0x555555;
+                });
+                
+                button.on('pointerout', () => {
+                    button.fillColor = 0x333333;
+                });
+                
+                button.on('pointerdown', () => {
+                    // 보상 적용
+                    this.applyReward(reward.type);
+                    
+                    // UI 제거
+                    panel.destroy();
+                    title.destroy();
+                    buttons.forEach(btn => {
+                        btn.button.destroy();
+                        btn.text.destroy();
+                        btn.description.destroy();
+                    });
+                    
+                    // 게임 재개
+                    this.resumeGame();
+                });
+                
+                buttons.push({ button, text: buttonText, description: descriptionText });
+            }
+        } catch (error) {
+            console.error('레벨업 보상 UI 생성 중 오류 발생:', error);
+            this.resumeGame(); // 오류 발생 시 게임 재개
+        }
+    }
+    
+    // 레벨업 보상 적용 메서드 수정
+    applyReward(type) {
+        try {
+            switch (type) {
+                case 'health':
+                    this.player.maxHealth += 20;
+                    this.player.health = this.player.maxHealth;
+                    this.events.emit('healthUpdate', this.player.health, this.player.maxHealth);
+                    break;
+                    
+                case 'damage':
+                    this.player.attackDamage += 5;
+                    break;
+                    
+                case 'speed':
+                    this.player.speed *= 1.1;
+                    this.player.maxSpeed *= 1.1;
+                    break;
+                    
+                case 'attackSpeed':
+                    this.player.attackSpeed *= 0.9; // 공격 속도 증가 (쿨다운 감소)
+                    break;
+                    
+                case 'attackRange':
+                    this.player.attackRange *= 1.15;
+                    break;
+                    
+                default:
+                    console.warn(`알 수 없는 보상 유형: ${type}`);
+                    break;
+            }
+            
+            // 보상 효과음 재생
+            this.sound.play('reward');
+            
+            // 보상 텍스트 표시
+            let rewardText = '';
+            switch (type) {
+                case 'health': rewardText = '최대 체력 증가!'; break;
+                case 'damage': rewardText = '공격력 증가!'; break;
+                case 'speed': rewardText = '이동 속도 증가!'; break;
+                case 'attackSpeed': rewardText = '공격 속도 증가!'; break;
+                case 'attackRange': rewardText = '공격 범위 증가!'; break;
+                default: rewardText = '능력 강화!'; break;
+            }
+            
+            const text = this.add.text(
+                this.cameras.main.width / 2,
+                this.cameras.main.height / 2,
+                rewardText,
+                {
+                    font: '28px Arial',
+                    fill: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 4
+                }
+            ).setOrigin(0.5);
+            
+            // 텍스트 애니메이션
+            this.tweens.add({
+                targets: text,
+                y: text.y - 50,
+                alpha: 0,
+                duration: 1500,
+                onComplete: () => {
+                    text.destroy();
+                }
+            });
+        } catch (error) {
+            console.error('레벨업 보상 적용 중 오류 발생:', error);
+        }
     }
 
     // 씬 종료 시 정리

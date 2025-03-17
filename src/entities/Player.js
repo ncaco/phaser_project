@@ -4,6 +4,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y, element = 'fire') {
         super(scene, x, y, 'player');
         
+        console.log(`플레이어 생성 시작: 위치=(${x}, ${y}), 속성=${element}`);
+        
         // 씬에 추가
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -38,9 +40,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.level = 1;
         this.experienceToNextLevel = 100;
         
-        // 정령 목록
-        this.spirits = [];
-        
         // 속성에 따른 설정 적용
         this.applyElementSettings();
         
@@ -50,9 +49,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 공격 로딩 프로그레스 바 생성
         this.createAttackProgressBar();
-        
-        // 초기 정령 생성
-        this.addSpirit(`${this.getElementName()} 정령`);
         
         // 애니메이션 설정
         this.setupAnimations();
@@ -70,6 +66,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             left: false,
             right: false
         };
+        
+        console.log('플레이어 생성 완료');
     }
     
     // 속성에 따른 설정 적용
@@ -202,31 +200,30 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.scene.input.keyboard.on('keyup-D', () => { this.keys.right = false; });
     }
 
-    update(time, delta) {
+    update() {
         // 사망 상태면 업데이트 중지
         if (this.isDead) return;
         
         // 이동 처리
-        this.handleMovement(delta);
+        this.handleMovement();
         
-        // 정령 업데이트
-        this.updateSpirits();
+        // 공격 쿨다운 체크 및 공격 수행
+        const currentTime = this.scene.time.now;
+        if (currentTime - this.lastAttackTime >= this.attackSpeed) {
+            this.performAttack();
+            this.lastAttackTime = currentTime;
+        }
+        
+        // 프로그레스 바 업데이트
+        this.updateProgressBar();
         
         // 속성 효과 위치 업데이트
         if (this.elementEffect && this.elementEffect.active) {
             this.elementEffect.setPosition(this.x, this.y);
         }
-        
-        // 공격 로딩 프로그레스 바 업데이트
-        this.updateProgressBar();
-        
-        // 공격 쿨다운이 완료되면 자동 공격
-        if (!this.isAttacking) {
-            this.performAttack();
-        }
     }
 
-    handleMovement(delta) {
+    handleMovement() {
         // 사망 상태면 이동 불가
         if (this.isDead) {
             this.body.setVelocity(0, 0);
@@ -403,23 +400,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    updateSpirits() {
-        // 정령들이 플레이어를 따라다니도록 설정
-        for (let i = 0; i < this.spirits.length; i++) {
-            const spirit = this.spirits[i];
-            
-            // 정령의 위치 업데이트
-            const angle = (i * (360 / this.spirits.length) + this.scene.time.now * 0.1) * (Math.PI / 180);
-            const distance = 50 + (this.level * 2); // 플레이어로부터의 거리 (레벨에 따라 증가)
-            
-            const targetX = this.x + Math.cos(angle) * distance;
-            const targetY = this.y + Math.sin(angle) * distance;
-            
-            // 정령 이동
-            spirit.moveTo(targetX, targetY);
-        }
-    }
-
     takeDamage(amount) {
         // 무적 상태거나 이미 사망한 경우 데미지를 받지 않음
         if (this.invulnerable || this.isDead) return;
@@ -456,14 +436,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.progressBar && this.progressBar.active) {
             this.progressBar.destroy();
         }
-        
-        // 모든 정령 제거
-        this.spirits.forEach(spirit => {
-            if (spirit && spirit.active) {
-                spirit.destroy();
-            }
-        });
-        this.spirits = [];
         
         // 사망 애니메이션
         this.scene.tweens.add({
@@ -590,47 +562,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // 경험치가 다음 레벨에 필요한 양보다 많으면 다시 레벨업
         this.checkLevelUp();
-    }
-
-    addSpirit(name) {
-        const Spirit = require('./Spirit').Spirit;
-        
-        // 정령 생성 위치 (플레이어 주변)
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 50;
-        const x = this.x + Math.cos(angle) * distance;
-        const y = this.y + Math.sin(angle) * distance;
-        
-        // 정령 생성
-        const spirit = new Spirit(this.scene, x, y, name);
-        
-        // 정령 속성 설정
-        spirit.element = this.element;
-        
-        // 정령 목록에 추가
-        this.spirits.push(spirit);
-        
-        return spirit;
-    }
-
-    upgradeSpirit(index) {
-        // 인덱스가 유효한지 확인
-        if (index < 0 || index >= this.spirits.length) return;
-        
-        // 정령 업그레이드
-        this.spirits[index].upgrade();
-        
-        // 업그레이드 효과음 재생
-        try {
-            this.scene.sound.play('spirit_upgrade');
-        } catch (error) {
-            console.error('업그레이드 효과음 재생 중 오류 발생:', error);
-        }
-        
-        // 정령 업그레이드 이벤트 발생
-        if (this.scene.onSpiritUpgraded) {
-            this.scene.onSpiritUpgraded();
-        }
     }
 
     // 레벨업 효과 생성
@@ -798,7 +729,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         let closestEnemy = null;
         let closestDistance = Infinity;
         
-        if (this.scene.enemies) {
+        if (this.scene.enemies && this.scene.enemies.getChildren) {
             this.scene.enemies.getChildren().forEach(enemy => {
                 if (enemy && enemy.active) {
                     const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
@@ -825,6 +756,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             // 공격 시간 업데이트
             this.lastAttackTime = this.scene.time.now;
             this.isAttacking = true;
+            
+            // 공격 효과음 재생
+            try {
+                this.scene.sound.play('player_attack');
+            } catch (error) {
+                console.error('공격 효과음 재생 중 오류:', error);
+            }
         }
     }
     
@@ -849,38 +787,132 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             // 플레이어와 적 사이의 각도
             const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
             
-            // 공격 효과 위치 (플레이어와 적 사이)
-            const distance = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
-            const effectX = this.x + Math.cos(angle) * (distance / 2);
-            const effectY = this.y + Math.sin(angle) * (distance / 2);
+            // 공격 볼 생성
+            const ball = this.scene.add.circle(this.x, this.y, 15, color, 0.8);
+            ball.setDepth(this.depth + 1);
             
-            // 공격 효과 생성
-            const effect = this.scene.add.circle(effectX, effectY, 20, color, 0.7);
-            effect.setDepth(this.depth + 1);
+            // 볼에 물리 속성 추가
+            this.scene.physics.add.existing(ball);
+            ball.body.setCollideWorldBounds(false);
+            
+            // 볼 속성 설정
+            ball.damage = this.attackDamage;
+            ball.element = this.element;
+            ball.lifespan = 1000; // 1초 후 자동 소멸
+            
+            // 볼 발광 효과
+            const glow = this.scene.add.circle(ball.x, ball.y, 20, color, 0.4);
+            glow.setDepth(ball.depth - 1);
+            
+            // 볼 애니메이션
+            this.scene.tweens.add({
+                targets: glow,
+                scale: { from: 0.7, to: 1.0 },
+                alpha: { from: 0.4, to: 0.2 },
+                duration: 300,
+                yoyo: true,
+                repeat: -1
+            });
+            
+            // 볼 이동 속도
+            const speed = 400;
+            const velocityX = Math.cos(angle) * speed;
+            const velocityY = Math.sin(angle) * speed;
+            ball.body.setVelocity(velocityX, velocityY);
+            
+            // 볼 업데이트 함수
+            const updateBall = (time, delta) => {
+                if (!ball || !ball.active || !ball.body) {
+                    return;
+                }
+                
+                // 발광 효과 위치 업데이트
+                if (glow && glow.active) {
+                    glow.setPosition(ball.x, ball.y);
+                }
+            };
+            
+            // 볼과 적 충돌 설정
+            let overlapCollider = null;
+            if (this.scene.enemies && this.scene.enemies.getChildren) {
+                overlapCollider = this.scene.physics.add.overlap(ball, this.scene.enemies, (ball, enemy) => {
+                    // 데미지 적용
+                    if (enemy && enemy.active) {
+                        enemy.takeDamage(ball.damage);
+                        
+                        // 속성별 추가 효과
+                        this.applyElementEffect(enemy);
+                    }
+                    
+                    // 충돌 효과
+                    this.createImpactEffect(ball.x, ball.y, color);
+                    
+                    // 볼 제거
+                    if (ball && ball.active) {
+                        if (overlapCollider) overlapCollider.destroy();
+                        if (ball.scene) ball.scene.events.off('update', updateBall);
+                        ball.destroy();
+                    }
+                    
+                    // 발광 효과 제거
+                    if (glow && glow.active) {
+                        glow.destroy();
+                    }
+                });
+            }
+            
+            // 볼 업데이트 이벤트 등록
+            this.scene.events.on('update', updateBall);
+            
+            // 볼 수명 타이머
+            this.scene.time.delayedCall(ball.lifespan, () => {
+                if (ball && ball.active) {
+                    // 충돌 콜라이더 제거
+                    if (overlapCollider) overlapCollider.destroy();
+                    
+                    // 업데이트 이벤트 제거
+                    if (ball.scene) ball.scene.events.off('update', updateBall);
+                    
+                    // 볼 제거
+                    ball.destroy();
+                    
+                    // 발광 효과 제거
+                    if (glow && glow.active) {
+                        glow.destroy();
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('공격 효과 생성 중 오류:', error);
+        }
+    }
+    
+    // 충돌 효과 생성 메서드 추가
+    createImpactEffect(x, y, color) {
+        // 씬이 유효한지 확인
+        if (!this.scene || !this.active) {
+            return;
+        }
+        
+        try {
+            // 충돌 효과 생성
+            const impact = this.scene.add.circle(x, y, 25, color, 0.7);
+            impact.setDepth(100);
             
             // 효과 애니메이션
             this.scene.tweens.add({
-                targets: effect,
+                targets: impact,
                 scale: { from: 0.5, to: 1.5 },
                 alpha: { from: 0.7, to: 0 },
                 duration: 300,
                 onComplete: () => {
-                    if (effect && effect.active) {
-                        effect.destroy();
+                    if (impact && impact.active) {
+                        impact.destroy();
                     }
                 }
             });
-            
-            // 효과음 재생
-            try {
-                if (this.scene.sound && this.scene.sound.play) {
-                    this.scene.sound.play('player_attack');
-                }
-            } catch (error) {
-                console.error('공격 효과음 재생 중 오류:', error);
-            }
         } catch (error) {
-            console.error('공격 효과 생성 중 오류:', error);
+            console.error('충돌 효과 생성 중 오류:', error);
         }
     }
     
@@ -961,7 +993,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                     
                 case 'air':
                     // 다중 타격 효과 (주변 적에게 추가 데미지)
-                    if (this.scene.enemies) {
+                    if (this.scene.enemies && this.scene.enemies.getChildren) {
                         this.scene.enemies.getChildren().forEach(nearbyEnemy => {
                             if (nearbyEnemy !== enemy && nearbyEnemy && nearbyEnemy.active) {
                                 const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, nearbyEnemy.x, nearbyEnemy.y);

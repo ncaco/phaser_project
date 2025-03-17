@@ -239,34 +239,68 @@ class AchievementSystem {
         }
         
         // 보상 지급
-        this.giveReward(achievement.reward);
+        this.applyReward(achievement.reward);
     }
     
-    // 보상 지급
-    giveReward(reward) {
-        if (!reward || !this.scene.player) return;
-        
-        switch (reward.type) {
-            case 'exp':
-                this.scene.player.addExperience(reward.value);
-                break;
-                
-            case 'spirit':
-                this.scene.player.addSpirit(reward.value);
-                break;
-                
-            case 'health':
-                this.scene.player.heal(reward.value);
-                break;
-                
-            case 'maxHealth':
-                this.scene.player.maxHealth += reward.value;
-                this.scene.player.health += reward.value;
-                break;
-                
-            case 'damage':
-                this.scene.player.damage += reward.value;
-                break;
+    // 보상 적용
+    applyReward(reward) {
+        try {
+            if (!this.scene.player) return;
+            
+            switch (reward.type) {
+                case 'health':
+                    this.scene.player.maxHealth += reward.value;
+                    this.scene.player.health = this.scene.player.maxHealth;
+                    this.showRewardText(`최대 체력 +${reward.value}`, 0x00ff00);
+                    break;
+                    
+                case 'damage':
+                    this.scene.player.attackDamage += reward.value;
+                    this.showRewardText(`공격력 +${reward.value}`, 0xff0000);
+                    break;
+                    
+                case 'speed':
+                    this.scene.player.speed += reward.value;
+                    this.scene.player.maxSpeed += reward.value;
+                    this.showRewardText(`이동 속도 +${reward.value}`, 0x00ffff);
+                    break;
+                    
+                case 'spirit':
+                    // 정령 보상 대신 경험치 보상으로 변경
+                    const expAmount = 100;
+                    if (this.scene.levelSystem) {
+                        this.scene.levelSystem.addExperience(expAmount);
+                    } else {
+                        this.scene.player.experience += expAmount;
+                        // 레벨업 체크
+                        if (this.scene.player.experience >= this.scene.player.experienceToNextLevel) {
+                            this.scene.player.level++;
+                            this.scene.player.experience -= this.scene.player.experienceToNextLevel;
+                            this.scene.player.experienceToNextLevel = Math.floor(this.scene.player.experienceToNextLevel * 1.2);
+                            
+                            // 레벨업 이벤트 발생
+                            this.scene.events.emit('levelUp', this.scene.player.level);
+                        }
+                    }
+                    this.showRewardText(`경험치 +${expAmount}`, 0xffff00);
+                    break;
+                    
+                case 'attackSpeed':
+                    this.scene.player.attackSpeed *= 0.9; // 공격 속도 증가 (쿨다운 감소)
+                    this.showRewardText('공격 속도 증가!', 0xffff00);
+                    break;
+                    
+                case 'attackRange':
+                    this.scene.player.attackRange += reward.value;
+                    this.showRewardText(`공격 범위 +${reward.value}`, 0xff00ff);
+                    break;
+                    
+                default:
+                    console.warn(`알 수 없는 보상 유형: ${reward.type}`);
+                    break;
+            }
+        } catch (error) {
+            console.error('보상 적용 중 오류 발생:', error);
         }
     }
     

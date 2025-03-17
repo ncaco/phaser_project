@@ -2,20 +2,22 @@ const Enemy = require('../entities/Enemy').Enemy;
 
 class EnemySpawner {
     constructor(scene) {
+        console.log('EnemySpawner 생성자 호출됨');
+        
+        // 씬 참조
         this.scene = scene;
         
-        // 적 생성 타이머
-        this.spawnTimer = null;
+        console.log('EnemySpawner 생성자 - 씬 참조 설정됨:', {
+            씬존재: this.scene ? true : false,
+            씬활성화: this.scene ? this.scene.active : false,
+            플레이어존재: this.scene && this.scene.player ? true : false
+        });
         
-        // 적 생성 간격 (밀리초)
-        this.spawnRate = 2000;
-        this.spawnInterval = this.spawnRate;
-        
-        // 적 생성 범위 (플레이어 주변)
-        this.spawnRadius = 500;
-        
-        // 최소 생성 거리 (플레이어로부터)
-        this.minSpawnDistance = 300;
+        // 적 생성 속성
+        this.spawnRate = 2000; // 기본 생성 간격 (밀리초)
+        this.minSpawnDistance = 200; // 최소 생성 거리
+        this.spawnRadius = 500; // 생성 반경
+        this.maxEnemies = 15; // 최대 적 수
         
         // 웨이브 시스템
         this.currentWave = 1;
@@ -28,16 +30,16 @@ class EnemySpawner {
         // 보스 웨이브 간격
         this.bossWaveInterval = 3;
         
-        // 난이도 설정
-        this.difficulty = 1;
-        this.difficultyMultiplier = 1;
-        
-        // 적 체력 및 공격력 배율
+        // 난이도 증가 속성
+        this.difficultyIncreaseRate = 0.1; // 10% 증가
+        this.difficultyIncreaseInterval = 30000; // 30초마다
         this.enemyHealthMultiplier = 1.0;
         this.enemyDamageMultiplier = 1.0;
+        this.enemySpeedMultiplier = 1.0;
         
-        // 최대 적 수
-        this.maxEnemies = 15;
+        // 타이머
+        this.spawnTimer = null;
+        this.difficultyTimer = null;
         
         // 적 타입별 가중치
         this.enemyWeights = {
@@ -48,35 +50,72 @@ class EnemySpawner {
             explosive: 0
         };
         
-        // 시간에 따른 난이도 증가 타이머
-        this.difficultyTimer = scene.time.addEvent({
-            delay: 60000, // 1분마다
-            callback: this.increaseDifficulty,
-            callbackScope: this,
-            loop: true
-        });
+        console.log('EnemySpawner 생성자 완료');
     }
     
     start() {
-        // 적 생성 타이머 시작
-        this.spawnTimer = this.scene.time.addEvent({
-            delay: this.spawnInterval,
-            callback: this.spawnEnemy,
-            callbackScope: this,
-            loop: true
-        });
+        console.log('EnemySpawner.start() 호출됨');
         
-        // 웨이브 시스템 초기화
-        this.currentWave = 1;
-        this.enemiesSpawned = 0;
-        this.enemiesKilled = 0;
-        this.waveCompleted = false;
+        // 씬 상태 확인 - 씬 활성화 체크 제거
+        if (!this.scene) {
+            console.error('EnemySpawner.start() 실패: 씬 객체가 없음');
+            return;
+        }
         
-        // 난이도에 따른 적 타입 가중치 조정
-        this.adjustEnemyWeightsByDifficulty();
+        // 씬 활성화 체크 제거 - 활성화 여부와 상관없이 진행
+        console.log('EnemySpawner.start() - 씬 존재 확인됨');
         
-        // 웨이브 시작 메시지
-        this.showWaveMessage(`웨이브 ${this.currentWave} 시작!`);
+        if (!this.scene.player) {
+            console.error('EnemySpawner.start() 실패: 플레이어 객체가 없음');
+            return;
+        }
+        
+        console.log('EnemySpawner.start() - 플레이어 존재 확인됨');
+        
+        try {
+            // 적 생성 타이머 시작
+            if (this.spawnTimer) {
+                this.spawnTimer.remove();
+            }
+            
+            this.spawnTimer = this.scene.time.addEvent({
+                delay: this.spawnRate,
+                callback: this.spawnEnemy,
+                callbackScope: this,
+                loop: true
+            });
+            
+            console.log('EnemySpawner - 적 생성 타이머 시작됨:', {
+                생성간격: this.spawnRate,
+                최대적수: this.maxEnemies,
+                현재웨이브: this.currentWave
+            });
+            
+            // 난이도 증가 타이머 시작
+            if (this.difficultyTimer) {
+                this.difficultyTimer.remove();
+            }
+            
+            this.difficultyTimer = this.scene.time.addEvent({
+                delay: this.difficultyIncreaseInterval,
+                callback: this.increaseDifficulty,
+                callbackScope: this,
+                loop: true
+            });
+            
+            console.log('EnemySpawner - 난이도 증가 타이머 시작됨:', {
+                증가간격: this.difficultyIncreaseInterval,
+                증가율: this.difficultyIncreaseRate
+            });
+            
+            // 첫 번째 적 즉시 생성
+            this.scene.time.delayedCall(500, this.spawnEnemy, [], this);
+            
+            console.log('EnemySpawner.start() 완료');
+        } catch (error) {
+            console.error('EnemySpawner.start() 중 오류 발생:', error);
+            console.error('오류 세부 정보:', error.stack);
+        }
     }
     
     // 난이도에 따른 적 타입 가중치 조정
@@ -130,26 +169,54 @@ class EnemySpawner {
         }
     }
     
+    // 적 생성 중지 메서드 추가 (GameScene의 shutdown에서 호출)
+    stopSpawning() {
+        this.stop(); // 기존 stop 메서드 호출
+    }
+    
     spawnEnemy() {
         // 플레이어가 없으면 리턴
-        if (!this.scene.player) return;
-        
-        // 웨이브가 완료되었으면 리턴
-        if (this.waveCompleted) return;
-        
-        // 최대 적 수 제한
-        if (this.scene.enemies.getChildren().length >= this.maxEnemies) {
+        if (!this.scene) {
+            console.error('적 생성 실패: 씬 객체가 없음');
             return;
         }
         
-        // 웨이브당 적 수 제한
+        // 씬 활성화 체크 제거 - 활성화 여부와 상관없이 진행
+        
+        if (!this.scene.player) {
+            console.error('적 생성 실패: 플레이어 객체가 없음');
+            console.log('현재 씬 상태:', {
+                씬이름: this.scene.scene ? this.scene.scene.key : '알 수 없음',
+                씬시스템초기화: this.scene.sys ? '완료' : '실패',
+                플레이어참조: this.scene.player ? '있음' : '없음'
+            });
+            return;
+        }
+        
+        // 게임 오버 상태면 리턴
+        if (this.scene.gameOver) {
+            console.log('적 생성 실패: 게임 오버 상태');
+            return;
+        }
+        
+        // 최대 적 수 제한
+        if (this.scene.enemies && this.scene.enemies.getChildren && 
+            this.scene.enemies.getChildren().length >= this.maxEnemies) {
+            console.log(`적 생성 실패: 최대 적 수(${this.maxEnemies}) 도달`);
+            return;
+        }
+        
+        // 웨이브당 적 수 제한 - 웨이브 시스템 사용 시
         if (this.enemiesSpawned >= this.enemiesPerWave * this.currentWave) {
             // 모든 적이 처치되었는지 확인
             if (this.enemiesKilled >= this.enemiesSpawned) {
                 this.completeWave();
             }
+            console.log(`적 생성 실패: 웨이브당 적 수 제한 도달 (${this.enemiesSpawned}/${this.enemiesPerWave * this.currentWave})`);
             return;
         }
+        
+        console.log('적 생성 시도 중...');
         
         // 플레이어 위치
         const playerX = this.scene.player.x;
@@ -157,6 +224,8 @@ class EnemySpawner {
         
         // 생성 위치 계산 (플레이어 주변)
         let spawnX, spawnY, distance;
+        let attempts = 0;
+        const maxAttempts = 10; // 최대 시도 횟수
         
         do {
             // 랜덤 각도
@@ -172,7 +241,31 @@ class EnemySpawner {
             // 플레이어와의 거리 계산
             distance = Phaser.Math.Distance.Between(playerX, playerY, spawnX, spawnY);
             
+            attempts++;
+            
+            // 최대 시도 횟수를 초과하면 강제로 종료
+            if (attempts >= maxAttempts) {
+                console.log(`적 생성 위치 찾기 실패: 최대 시도 횟수(${maxAttempts}) 초과`);
+                break;
+            }
         } while (distance < this.minSpawnDistance);
+        
+        // 화면 경계 확인 및 조정
+        const padding = 50; // 화면 경계로부터의 여유 공간
+        
+        if (this.scene.cameras && this.scene.cameras.main) {
+            const camera = this.scene.cameras.main;
+            const bounds = {
+                left: camera.scrollX - padding,
+                right: camera.scrollX + camera.width + padding,
+                top: camera.scrollY - padding,
+                bottom: camera.scrollY + camera.height + padding
+            };
+            
+            // 화면 밖으로 나가지 않도록 조정
+            spawnX = Phaser.Math.Clamp(spawnX, bounds.left, bounds.right);
+            spawnY = Phaser.Math.Clamp(spawnY, bounds.top, bounds.bottom);
+        }
         
         // 적 타입 결정
         let enemyType;
@@ -184,31 +277,92 @@ class EnemySpawner {
             enemyType = this.getRandomEnemyType();
         }
         
-        // 적 생성
-        const enemy = new Enemy(this.scene, spawnX, spawnY, enemyType);
+        console.log(`적 생성 시도: 타입=${enemyType}, 위치=(${Math.round(spawnX)}, ${Math.round(spawnY)})`);
         
-        // 난이도에 따른 적 강화
-        this.applyDifficultyToEnemy(enemy);
-        
-        // 적 그룹에 추가
-        this.scene.enemies.add(enemy);
-        
-        // 적 생성 카운트 증가
-        this.enemiesSpawned++;
-        
-        // 적 사망 이벤트 리스너
-        enemy.on('destroy', () => {
-            this.enemiesKilled++;
+        try {
+            // 적 생성 시작
+            console.log('적 생성 시작');
             
-            // 웨이브 완료 체크
-            if (this.enemiesSpawned >= this.enemiesPerWave * this.currentWave && 
-                this.enemiesKilled >= this.enemiesSpawned) {
-                this.completeWave();
+            // Enemy 클래스 가져오기
+            const Enemy = require('../entities/Enemy').Enemy;
+            
+            // 적 생성
+            const enemy = new Enemy(this.scene, spawnX, spawnY, enemyType);
+            console.log(`적 생성 성공: 타입=${enemyType}`);
+            
+            // 난이도에 따른 적 강화
+            this.applyDifficultyToEnemy(enemy);
+            
+            // 적 그룹에 추가
+            try {
+                if (this.scene.enemies && typeof this.scene.enemies.add === 'function') {
+                    this.scene.enemies.add(enemy);
+                    console.log('적이 그룹에 추가됨');
+                } else {
+                    console.error('적 그룹이 존재하지 않거나 add 메서드가 없음');
+                    console.log('적 그룹 상태:', {
+                        존재여부: this.scene.enemies ? true : false,
+                        add메서드: this.scene.enemies ? (typeof this.scene.enemies.add === 'function' ? '있음' : '없음') : '해당없음'
+                    });
+                    
+                    // 적 그룹이 없으면 생성
+                    if (!this.scene.enemies && this.scene.physics) {
+                        console.log('적 그룹 새로 생성 시도');
+                        this.scene.enemies = this.scene.physics.add.group();
+                        this.scene.enemies.add(enemy);
+                        console.log('적 그룹 생성 및 적 추가 완료');
+                    }
+                }
+            } catch (groupError) {
+                console.error('적 그룹에 추가 중 오류:', groupError);
             }
-        });
-        
-        // 생성 효과
-        this.createSpawnEffect(spawnX, spawnY);
+            
+            // 적 생성 카운트 증가
+            this.enemiesSpawned++;
+            
+            // 적 사망 이벤트 리스너
+            try {
+                enemy.on('destroy', () => {
+                    this.enemiesKilled++;
+                    console.log(`적 처치: ${this.enemiesKilled}/${this.enemiesSpawned}`);
+                    
+                    // 웨이브 완료 체크
+                    if (this.enemiesSpawned >= this.enemiesPerWave * this.currentWave && 
+                        this.enemiesKilled >= this.enemiesSpawned) {
+                        this.completeWave();
+                    }
+                    
+                    // 추가 적 생성 (25% 확률)
+                    if (Phaser.Math.Between(1, 4) === 1) {
+                        // 0.5초 후 추가 적 생성
+                        if (this.scene && this.scene.time) {
+                            this.scene.time.delayedCall(500, () => {
+                                if (!this.scene.gameOver && this.scene.active) {
+                                    this.spawnEnemy();
+                                }
+                            });
+                        }
+                    }
+                });
+            } catch (eventError) {
+                console.error('적 이벤트 리스너 설정 중 오류:', eventError);
+            }
+            
+            // 생성 효과
+            this.createSpawnEffect(spawnX, spawnY);
+        } catch (error) {
+            console.error('적 생성 중 오류 발생:', error);
+            console.error('오류 세부 정보:', error.stack);
+            
+            // 오류 발생 시 추가 정보 로깅
+            console.log('오류 발생 시 상태:', {
+                씬존재: this.scene ? true : false,
+                플레이어존재: this.scene && this.scene.player ? true : false,
+                적그룹존재: this.scene && this.scene.enemies ? true : false,
+                위치: `(${Math.round(spawnX)}, ${Math.round(spawnY)})`,
+                적타입: enemyType
+            });
+        }
     }
     
     getRandomEnemyType() {
@@ -238,7 +392,7 @@ class EnemySpawner {
     
     applyDifficultyToEnemy(enemy) {
         // 난이도에 따른 적 강화
-        const baseMultiplier = this.difficultyMultiplier;
+        const baseMultiplier = this.difficultyIncreaseRate;
         
         // 체력 증가
         enemy.health *= baseMultiplier * this.enemyHealthMultiplier;
@@ -321,12 +475,12 @@ class EnemySpawner {
         // 웨이브에 따른 난이도 조정
         
         // 적 생성 간격 감소 (최소 500ms)
-        this.spawnInterval = Math.max(500, this.spawnRate - (this.currentWave * 100));
+        this.spawnRate = Math.max(500, this.spawnRate - (this.currentWave * 100));
         
         // 타이머 업데이트
         if (this.spawnTimer) {
             this.spawnTimer.reset({
-                delay: this.spawnInterval,
+                delay: this.spawnRate,
                 callback: this.spawnEnemy,
                 callbackScope: this,
                 loop: true
@@ -334,7 +488,7 @@ class EnemySpawner {
         }
         
         // 난이도 증가
-        this.difficultyMultiplier = 1 + (this.currentWave * 0.1);
+        this.difficultyIncreaseRate = 1 + (this.currentWave * 0.1);
         
         // 적 타입 가중치 조정
         if (this.currentWave >= 3) {
@@ -349,25 +503,47 @@ class EnemySpawner {
     
     increaseDifficulty() {
         // 시간에 따른 난이도 증가
-        this.difficulty += 0.1;
+        this.difficultyIncreaseRate += 0.1;
         
         // 적 생성 간격 감소 (최소 500ms)
-        this.spawnInterval = Math.max(500, this.spawnInterval - 50);
+        this.spawnRate = Math.max(500, this.spawnRate - 50);
+        
+        // 최대 적 수 증가 (최대 30마리)
+        this.maxEnemies = Math.min(30, this.maxEnemies + 1);
+        
+        // 적 체력 및 공격력 배율 증가
+        this.enemyHealthMultiplier += 0.05;
+        this.enemyDamageMultiplier += 0.05;
         
         // 타이머 업데이트
         if (this.spawnTimer) {
             this.spawnTimer.reset({
-                delay: this.spawnInterval,
+                delay: this.spawnRate,
                 callback: this.spawnEnemy,
                 callbackScope: this,
                 loop: true
             });
         }
         
+        // 추가 적 즉시 생성 (10% 확률)
+        if (Phaser.Math.Between(1, 10) === 1) {
+            // 1~3마리 추가 생성
+            const extraEnemies = Phaser.Math.Between(1, 3);
+            for (let i = 0; i < extraEnemies; i++) {
+                this.scene.time.delayedCall(i * 200, () => {
+                    if (this.scene && this.scene.active && !this.scene.gameOver) {
+                        this.spawnEnemy();
+                    }
+                });
+            }
+        }
+        
         // 난이도 증가 메시지 (10% 확률)
         if (Phaser.Math.Between(1, 10) === 1) {
             this.showWaveMessage('난이도 증가!', 0xff0000);
         }
+        
+        console.log(`난이도 증가: ${this.difficultyIncreaseRate.toFixed(1)}, 생성 간격: ${this.spawnRate}ms, 최대 적 수: ${this.maxEnemies}`);
     }
     
     createSpawnEffect(x, y) {
@@ -468,23 +644,6 @@ class EnemySpawner {
             waveCooldown: this.waveCooldown,
             nextBossWave: this.bossWaveInterval - (this.currentWave % this.bossWaveInterval)
         };
-    }
-    
-    // 적 생성 중지
-    stopSpawning() {
-        // 적 생성 타이머 중지
-        if (this.spawnTimer) {
-            this.spawnTimer.remove();
-            this.spawnTimer = null;
-        }
-        
-        // 난이도 증가 타이머 중지
-        if (this.difficultyTimer) {
-            this.difficultyTimer.remove();
-            this.difficultyTimer = null;
-        }
-        
-        console.log('적 생성 중지됨');
     }
 }
 

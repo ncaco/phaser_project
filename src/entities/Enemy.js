@@ -2,6 +2,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y, type = 'normal') {
         super(scene, x, y, 'enemy');
         
+        console.log(`Enemy 생성 시작: 타입=${type}, 위치=(${x}, ${y})`);
+        
         // 씬에 추가
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -39,6 +41,32 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         
         // 특수 능력 쿨다운
         this.specialAbilityCooldown = false;
+        
+        // 물리 속성 설정
+        this.setCollideWorldBounds(false);
+        this.body.setDamping(true);
+        this.body.setDrag(0.9, 0.9);
+        
+        // 애니메이션 설정
+        this.setupAnimations();
+        
+        // 타겟 설정 (플레이어)
+        this.target = scene.player;
+        
+        // 이동 관련 속성
+        this.moveTimer = null;
+        this.lastMoveTime = 0;
+        this.moveInterval = 100; // 이동 업데이트 간격 (밀리초)
+        
+        // 공격 관련 속성
+        this.attackTimer = null;
+        this.attackInterval = 1000; // 공격 간격 (밀리초)
+        this.attackRange = 100; // 공격 범위
+        
+        // 공격 타이머 시작
+        this.startAttackTimer();
+        
+        console.log(`Enemy 생성 완료: 타입=${type}, 체력=${this.health}/${this.maxHealth}`);
     }
     
     setupEnemyType() {
@@ -769,6 +797,89 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                     expText.destroy();
                 }
             });
+        }
+    }
+    
+    // 애니메이션 설정 메서드 추가
+    setupAnimations() {
+        try {
+            // 기본 애니메이션 설정
+            if (this.scene && this.scene.anims) {
+                // 이미 애니메이션이 정의되어 있는지 확인
+                if (!this.scene.anims.exists('enemy_idle')) {
+                    // 적 기본 애니메이션 (idle)
+                    this.scene.anims.create({
+                        key: 'enemy_idle',
+                        frames: this.scene.anims.generateFrameNumbers('enemy', { start: 0, end: 0 }),
+                        frameRate: 5,
+                        repeat: -1
+                    });
+                }
+                
+                // 애니메이션 재생
+                this.play('enemy_idle');
+            }
+        } catch (error) {
+            console.error('적 애니메이션 설정 중 오류:', error);
+            // 오류가 발생해도 게임 진행에 영향을 주지 않도록 함
+        }
+    }
+    
+    // 공격 타이머 시작 메서드 추가
+    startAttackTimer() {
+        try {
+            if (this.scene && this.scene.time) {
+                this.attackTimer = this.scene.time.addEvent({
+                    delay: this.attackInterval,
+                    callback: this.attack,
+                    callbackScope: this,
+                    loop: true
+                });
+            }
+        } catch (error) {
+            console.error('공격 타이머 설정 중 오류:', error);
+        }
+    }
+    
+    // 공격 메서드 추가
+    attack() {
+        try {
+            // 플레이어가 없으면 리턴
+            if (!this.scene || !this.scene.player) return;
+            
+            // 플레이어와의 거리 계산
+            const distance = Phaser.Math.Distance.Between(
+                this.x, this.y,
+                this.scene.player.x, this.scene.player.y
+            );
+            
+            // 공격 범위 내에 있으면 공격
+            if (distance <= this.attackRange) {
+                // 플레이어에게 데미지
+                this.scene.player.takeDamage(this.damage);
+                
+                // 공격 효과
+                const attackEffect = this.scene.add.circle(
+                    this.scene.player.x,
+                    this.scene.player.y,
+                    20,
+                    0xff0000,
+                    0.5
+                );
+                
+                // 효과 애니메이션
+                this.scene.tweens.add({
+                    targets: attackEffect,
+                    scale: 0,
+                    alpha: 0,
+                    duration: 300,
+                    onComplete: () => {
+                        attackEffect.destroy();
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('적 공격 중 오류:', error);
         }
     }
 }

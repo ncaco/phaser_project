@@ -358,19 +358,17 @@ class LevelSystem {
                 break;
                 
             case 'spirit':
-                // 새로운 정령
-                const spiritTypes = ['기본 정령', '불 정령', '물 정령', '바람 정령', '땅 정령', '번개 정령'];
-                const randomType = spiritTypes[Math.floor(Math.random() * spiritTypes.length)];
-                this.scene.player.addSpirit(randomType);
-                this.showRewardEffect(`${randomType} 획득!`, 0xffff00);
+                // 새로운 정령 대신 경험치 보상으로 변경
+                const expAmount = 50;
+                this.addExperience(expAmount);
+                this.showRewardEffect(`경험치 +${expAmount}!`, 0xffff00);
                 break;
                 
             case 'upgrade':
-                // 모든 정령 강화
-                this.scene.player.spirits.forEach(spirit => {
-                    spirit.upgrade();
-                });
-                this.showRewardEffect('모든 정령 강화!', 0xff00ff);
+                // 모든 정령 강화 대신 플레이어 능력치 강화
+                this.scene.player.attackDamage *= 1.1; // 공격력 10% 증가
+                this.scene.player.attackSpeed *= 0.95; // 공격 속도 5% 증가
+                this.showRewardEffect('능력 강화!', 0xff00ff);
                 break;
         }
     }
@@ -429,6 +427,63 @@ class LevelSystem {
             experienceToNextLevel: this.experienceToNextLevel,
             percentage: (this.experience / this.experienceToNextLevel) * 100
         };
+    }
+
+    // 정령 관련 코드를 수정하여 addSpirit 메서드 호출을 제거합니다.
+    // 레벨업 보상으로 정령을 추가하는 대신 다른 보상을 제공합니다.
+
+    // 레벨업 보상 메서드 수정
+    applyLevelUpReward() {
+        try {
+            // 플레이어가 없으면 리턴
+            if (!this.scene.player) return;
+            
+            // 레벨업 보상 종류
+            const rewardTypes = [
+                'health',    // 최대 체력 증가
+                'damage',    // 공격력 증가
+                'speed',     // 이동 속도 증가
+                'attackSpeed', // 공격 속도 증가
+                'attackRange'  // 공격 범위 증가
+            ];
+            
+            // 랜덤 보상 선택
+            const randomType = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+            
+            // 보상 적용
+            switch (randomType) {
+                case 'health':
+                    this.scene.player.maxHealth += 20;
+                    this.scene.player.health = this.scene.player.maxHealth;
+                    this.showRewardText('최대 체력 증가!', 0x00ff00);
+                    break;
+                    
+                case 'damage':
+                    this.scene.player.attackDamage += 5;
+                    this.showRewardText('공격력 증가!', 0xff0000);
+                    break;
+                    
+                case 'speed':
+                    this.scene.player.speed *= 1.1;
+                    this.scene.player.maxSpeed *= 1.1;
+                    this.showRewardText('이동 속도 증가!', 0x00ffff);
+                    break;
+                    
+                case 'attackSpeed':
+                    this.scene.player.attackSpeed *= 0.9; // 공격 속도 증가 (쿨다운 감소)
+                    this.showRewardText('공격 속도 증가!', 0xffff00);
+                    break;
+                    
+                case 'attackRange':
+                    this.scene.player.attackRange *= 1.15;
+                    this.showRewardText('공격 범위 증가!', 0xff00ff);
+                    break;
+            }
+            
+            console.log(`레벨업 보상 적용: ${randomType}`);
+        } catch (error) {
+            console.error('레벨업 보상 적용 중 오류 발생:', error);
+        }
     }
 }
 
