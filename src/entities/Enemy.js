@@ -61,7 +61,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         // 공격 관련 속성
         this.attackTimer = null;
         this.attackInterval = 1000; // 공격 간격 (밀리초)
-        this.attackRange = 100; // 공격 범위
+        // 공격 범위를 화면 대각선 길이로 설정 (화면 끝까지 공격 가능)
+        this.attackRange = 2000; // 매우 큰 값으로 설정하여 화면 전체 커버
         
         // 공격 타이머 시작
         this.startAttackTimer();
@@ -79,6 +80,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 10;
                 this.expValue = 10;
                 this.dropRate = 0.3;
+                this.attackRange = 1500; // 공격 범위 증가
                 this.setTint(0xff0000);
                 break;
                 
@@ -89,6 +91,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 5;
                 this.expValue = 15;
                 this.dropRate = 0.4;
+                this.attackRange = 1500; // 공격 범위 증가
                 this.setTint(0x00ff00);
                 this.setScale(0.8);
                 break;
@@ -100,6 +103,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 20;
                 this.expValue = 30;
                 this.dropRate = 0.5;
+                this.attackRange = 1800; // 공격 범위 증가
                 this.setTint(0x0000ff);
                 this.setScale(1.3);
                 break;
@@ -111,7 +115,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 15;
                 this.expValue = 20;
                 this.dropRate = 0.4;
-                this.attackRange = 200;
+                this.attackRange = 2000; // 원거리 타입의 공격 범위 대폭 증가
+                this.attackInterval = 1500; // 공격 간격 증가
                 this.setTint(0xffff00);
                 break;
                 
@@ -122,7 +127,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 30;
                 this.expValue = 25;
                 this.dropRate = 0.5;
-                this.explosionRadius = 100;
+                this.attackRange = 1600; // 공격 범위 증가
+                this.explosionRadius = 200; // 폭발 반경 증가
                 this.setTint(0xff8800);
                 break;
                 
@@ -133,6 +139,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 30;
                 this.expValue = 100;
                 this.dropRate = 1.0; // 100% 드롭
+                this.attackRange = 2500; // 전체 화면 공격 가능
+                this.attackInterval = 2000; // 공격 간격 증가
                 this.setTint(0xff00ff);
                 this.setScale(2);
                 
@@ -152,6 +160,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.damage = 10;
                 this.expValue = 10;
                 this.dropRate = 0.3;
+                this.attackRange = 1500; // 공격 범위 증가
                 this.setTint(0xff0000);
                 break;
         }
@@ -342,42 +351,154 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         if (!this.scene.player) return;
         
         const player = this.scene.player;
-        const distance = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
         
-        // 공격 범위 내에 있고 쿨다운이 아니면 공격
-        if (distance <= this.attackRange && !this.specialAbilityCooldown) {
+        // 화면에 플레이어가 있고 쿨다운이 아니면 공격
+        if (this.isPlayerOnScreen() && !this.specialAbilityCooldown) {
             this.specialAbilityCooldown = true;
             
-            // 원거리 공격 발사
-            const projectile = this.scene.physics.add.sprite(this.x, this.y, 'projectile');
-            projectile.setTint(0xffff00);
+            // 공격 준비 효과
+            const chargeEffect = this.scene.add.circle(this.x, this.y, 15, 0xffff00, 0.7);
             
-            // 발사체 물리 설정
-            this.scene.physics.world.enable(projectile);
-            
-            // 플레이어 방향으로 발사
-            const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
-            const speed = 200;
-            projectile.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-            
-            // 발사체 회전
-            projectile.rotation = angle;
-            
-            // 플레이어와 발사체 충돌 설정
-            this.scene.physics.add.overlap(player, projectile, (player, proj) => {
-                player.takeDamage(this.damage);
-                proj.destroy();
-            });
-            
-            // 5초 후 발사체 제거
-            this.scene.time.delayedCall(5000, () => {
-                if (projectile.active) {
-                    projectile.destroy();
+            // 충전 애니메이션
+            this.scene.tweens.add({
+                targets: chargeEffect,
+                scale: 2,
+                alpha: 0.9,
+                duration: 500,
+                onComplete: () => {
+                    chargeEffect.destroy();
+                    
+                    // 원거리 공격 발사
+                    const projectile = this.scene.physics.add.sprite(this.x, this.y, 'projectile');
+                    projectile.setTint(this.getAttackColor());
+                    projectile.setScale(1.5);
+                    projectile.setAlpha(0.8);
+                    
+                    // 발사체 물리 설정
+                    this.scene.physics.world.enable(projectile);
+                    
+                    // 플레이어 방향으로 발사
+                    const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
+                    const speed = 300; // 발사체 속도 증가
+                    projectile.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+                    
+                    // 발사체 회전 효과
+                    projectile.rotation = angle;
+                    
+                    // 꼬리 효과
+                    const addTrail = () => {
+                        if (!projectile.active) return;
+                        
+                        const trail = this.scene.add.circle(
+                            projectile.x, 
+                            projectile.y, 
+                            10, 
+                            this.getAttackColor(), 
+                            0.5
+                        );
+                        
+                        // 꼬리 효과 애니메이션
+                        this.scene.tweens.add({
+                            targets: trail,
+                            scale: 0,
+                            alpha: 0,
+                            duration: 300,
+                            onComplete: () => {
+                                trail.destroy();
+                            }
+                        });
+                    };
+                    
+                    // 꼬리 효과 업데이트 타이머
+                    const trailTimer = this.scene.time.addEvent({
+                        delay: 50,
+                        callback: addTrail,
+                        loop: true
+                    });
+                    
+                    // 발사체 업데이트 - 플레이어 추적
+                    const updateProjectile = () => {
+                        if (!projectile.active || !this.scene.player) {
+                            trailTimer.remove();
+                            return;
+                        }
+                        
+                        // 플레이어 방향으로 약간 방향 조정 (유도 미사일)
+                        const currentAngle = Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x);
+                        const targetAngle = Phaser.Math.Angle.Between(
+                            projectile.x, projectile.y,
+                            this.scene.player.x, this.scene.player.y
+                        );
+                        
+                        // 각도 차이 계산
+                        let angleDiff = Phaser.Math.Angle.Wrap(targetAngle - currentAngle);
+                        
+                        // 천천히 방향 조정 (완전히 유도하지는 않음)
+                        const turnSpeed = 0.02;
+                        const newAngle = currentAngle + (angleDiff * turnSpeed);
+                        
+                        // 속도 유지하면서 방향만 변경
+                        const currentSpeed = Math.sqrt(
+                            projectile.body.velocity.x * projectile.body.velocity.x + 
+                            projectile.body.velocity.y * projectile.body.velocity.y
+                        );
+                        
+                        projectile.setVelocity(
+                            Math.cos(newAngle) * currentSpeed,
+                            Math.sin(newAngle) * currentSpeed
+                        );
+                        
+                        // 발사체 회전 업데이트
+                        projectile.rotation = newAngle;
+                    };
+                    
+                    // 발사체 업데이트 타이머
+                    const updateTimer = this.scene.time.addEvent({
+                        delay: 100,
+                        callback: updateProjectile,
+                        loop: true
+                    });
+                    
+                    // 플레이어와 발사체 충돌 설정
+                    this.scene.physics.add.overlap(player, projectile, (player, proj) => {
+                        // 명중 효과
+                        const hitEffect = this.scene.add.circle(
+                            player.x, player.y, 40, this.getAttackColor(), 0.8
+                        );
+                        
+                        // 효과 애니메이션
+                        this.scene.tweens.add({
+                            targets: hitEffect,
+                            scale: 0,
+                            alpha: 0,
+                            duration: 500,
+                            onComplete: () => {
+                                hitEffect.destroy();
+                            }
+                        });
+                        
+                        // 데미지 적용
+                        player.takeDamage(this.damage);
+                        
+                        // 발사체 제거
+                        trailTimer.remove();
+                        updateTimer.remove();
+                        proj.destroy();
+                    });
+                    
+                    // 7초 후 발사체 제거 (시간 증가)
+                    this.scene.time.delayedCall(7000, () => {
+                        if (projectile.active) {
+                            trailTimer.remove();
+                            updateTimer.remove();
+                            projectile.destroy();
+                        }
+                    });
                 }
             });
             
-            // 쿨다운 설정 (2초)
-            this.scene.time.delayedCall(2000, () => {
+            // 쿨다운 설정 (1.5초로 감소)
+            this.scene.time.delayedCall(1500, () => {
                 this.specialAbilityCooldown = false;
             });
         }
@@ -847,39 +968,114 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             // 플레이어가 없으면 리턴
             if (!this.scene || !this.scene.player) return;
             
-            // 플레이어와의 거리 계산
-            const distance = Phaser.Math.Distance.Between(
-                this.x, this.y,
-                this.scene.player.x, this.scene.player.y
-            );
+            // 플레이어가 있으면 항상 공격 (화면 끝까지 공격 가능)
+            // 화면 안에 있는지 확인 (선택적)
+            const isPlayerVisible = this.isPlayerOnScreen();
             
-            // 공격 범위 내에 있으면 공격
-            if (distance <= this.attackRange) {
+            if (isPlayerVisible) {
                 // 플레이어에게 데미지
                 this.scene.player.takeDamage(this.damage);
                 
-                // 공격 효과
-                const attackEffect = this.scene.add.circle(
-                    this.scene.player.x,
-                    this.scene.player.y,
-                    20,
-                    0xff0000,
-                    0.5
+                // 적 위치에서 플레이어 방향으로 공격 효과 생성
+                const player = this.scene.player;
+                const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
+                
+                // 더 강력하고 눈에 띄는 공격 효과
+                // 레이저/빔 형태의 공격 효과
+                const attackLine = this.scene.add.line(
+                    0, 0,
+                    this.x, this.y,
+                    player.x, player.y,
+                    this.getAttackColor()
+                );
+                attackLine.setLineWidth(5);
+                attackLine.setOrigin(0, 0);
+                attackLine.setAlpha(0.7);
+                
+                // 타겟 지점에 적중 효과
+                const targetEffect = this.scene.add.circle(
+                    player.x,
+                    player.y,
+                    30,
+                    this.getAttackColor(),
+                    0.7
                 );
                 
                 // 효과 애니메이션
                 this.scene.tweens.add({
-                    targets: attackEffect,
+                    targets: attackLine,
+                    alpha: 0,
+                    duration: 300,
+                    onComplete: () => {
+                        attackLine.destroy();
+                    }
+                });
+                
+                this.scene.tweens.add({
+                    targets: targetEffect,
                     scale: 0,
                     alpha: 0,
                     duration: 300,
                     onComplete: () => {
-                        attackEffect.destroy();
+                        targetEffect.destroy();
                     }
                 });
             }
         } catch (error) {
             console.error('적 공격 중 오류:', error);
+        }
+    }
+    
+    // 플레이어가 화면 안에 있는지 확인하는 메서드
+    isPlayerOnScreen() {
+        try {
+            const player = this.scene.player;
+            if (!player) return false;
+            
+            // 카메라가 없으면 항상 true 반환
+            if (!this.scene.cameras || !this.scene.cameras.main) return true;
+            
+            const camera = this.scene.cameras.main;
+            
+            // 화면 경계 설정 (여유 공간 포함)
+            const padding = 100;
+            const bounds = {
+                left: camera.scrollX - padding,
+                right: camera.scrollX + camera.width + padding,
+                top: camera.scrollY - padding,
+                bottom: camera.scrollY + camera.height + padding
+            };
+            
+            // 플레이어가 화면 경계 안에 있는지 확인
+            return (
+                player.x >= bounds.left &&
+                player.x <= bounds.right &&
+                player.y >= bounds.top &&
+                player.y <= bounds.bottom
+            );
+        } catch (error) {
+            console.error('화면 확인 중 오류:', error);
+            return true; // 오류 발생 시 기본적으로 true 반환
+        }
+    }
+    
+    // 적 타입에 따른 공격 색상 반환
+    getAttackColor() {
+        switch (this.type) {
+            case 'normal':
+                return 0xff0000; // 빨간색
+            case 'fast':
+                return 0x00ff00; // 녹색
+            case 'tank':
+                return 0x0000ff; // 파란색
+            case 'ranged':
+                return 0xffff00; // 노란색
+            case 'explosive':
+                return 0xff8800; // 주황색
+            case 'boss':
+                return 0xff00ff; // 보라색
+            default:
+                return 0xff0000; // 기본 빨간색
         }
     }
 }
